@@ -70,10 +70,10 @@
   .steps input[type=range] { -webkit-appearance:none; appearance:none; height:18px; background:transparent; border-radius:9px; }
   .steps input[type=range]::-webkit-slider-runnable-track { height:8px; border-radius:4px; }
   .steps input[type=range]::-moz-range-track { height:8px; border-radius:4px; }
-  .steps input.a::-webkit-slider-runnable-track { background:rgba(232,146,58,.45); border:1px solid var(--a); }
-  .steps input.b::-webkit-slider-runnable-track { background:rgba(91,183,168,.45); border:1px solid var(--b); }
-  .steps input.a::-moz-range-track { background:rgba(232,146,58,.45); border:1px solid var(--a); }
-  .steps input.b::-moz-range-track { background:rgba(91,183,168,.45); border:1px solid var(--b); }
+  .steps input.a::-webkit-slider-runnable-track { background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,rgba(232,146,58,.45); border:1px solid var(--a); }
+  .steps input.b::-webkit-slider-runnable-track { background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,rgba(91,183,168,.45); border:1px solid var(--b); }
+  .steps input.a::-moz-range-track { background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,rgba(232,146,58,.45); border:1px solid var(--a); }
+  .steps input.b::-moz-range-track { background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,rgba(91,183,168,.45); border:1px solid var(--b); }
   .steps input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; margin-top:-5px; border-radius:50%; border:2px solid #1b1713; }
   .steps input.a::-webkit-slider-thumb { background:var(--a); } .steps input.b::-webkit-slider-thumb { background:var(--b); }
   .steps input[type=range]::-moz-range-thumb { width:12px; height:12px; border-radius:50%; border:2px solid #1b1713; }
@@ -273,8 +273,8 @@ for (let l = 0; l < NL; l++) {
       const j = i*K + k;
       h += `<div class="slot" data-j="${j}"><button class="snd" data-l="${l}" data-j="${j}"></button>
         <button class="dyn" data-l="${l}" data-j="${j}" title="Dynamik: normal / Akzent / Ghost"></button>
-        <input class="a" type="range" min="-100" max="100" data-l="${l}" data-k="a" data-j="${j}" title="Start">
-        <input class="b" type="range" min="-100" max="100" data-l="${l}" data-k="b" data-j="${j}" title="Ziel"></div>`;
+        <input class="a" type="range" min="-100" max="100" data-l="${l}" data-k="a" data-j="${j}" title="Start-Offset (Doppelklick = 0)">
+        <input class="b" type="range" min="-100" max="100" data-l="${l}" data-k="b" data-j="${j}" title="Ziel-Offset (Doppelklick = 0)"></div>`;
     }
     h += `</div>`;
   }
@@ -322,7 +322,16 @@ layersEl.addEventListener('click', e => {
   } else return;
   resync(); syncControls();
 });
-layersEl.addEventListener('input', e => { const r = e.target; if (r.dataset.k) state.layers[+r.dataset.l][r.dataset.k][+r.dataset.j] = +r.value; });
+const SNAP = 3;                                   // Magnet um die Mitte: |Wert| <= 3 % rastet auf 0 ein
+layersEl.addEventListener('input', e => {
+  const r = e.target; if (!r.dataset.k) return;
+  if (Math.abs(+r.value) <= SNAP) r.value = 0;
+  state.layers[+r.dataset.l][r.dataset.k][+r.dataset.j] = +r.value;
+});
+layersEl.addEventListener('dblclick', e => {        // Doppelklick = Offset auf 0 zurücksetzen
+  const r = e.target; if (!r.dataset || !r.dataset.k) return;
+  r.value = 0; state.layers[+r.dataset.l][r.dataset.k][+r.dataset.j] = 0; dirty = true;
+});
 layersEl.addEventListener('change', e => {
   const el = e.target, l = +el.dataset.l;
   if (el.classList.contains('nsel')) state.layers[l].n = +el.value;

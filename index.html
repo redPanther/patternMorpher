@@ -19,15 +19,21 @@
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:16px system-ui,sans-serif; }
   .app-header, main, .utility { width:100%; max-width:var(--app-max); margin-inline:auto; padding-inline:clamp(10px,2vw,24px); }
-  .app-header { position:sticky; top:0; z-index:20; background:var(--header-bg); padding-block:8px 10px; border-bottom:1px solid #3a3228; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  .app-header { position:sticky; top:0; z-index:20; background:var(--header-bg); padding-block:5px 6px; border-bottom:1px solid #3a3228; box-shadow:0 4px 14px rgba(0,0,0,.4); }
   main { padding-bottom:24px; }
   .app-header { display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 14px; align-items:stretch; }
   .hbody { min-width:0; }
   .grp { display:inline-flex; gap:10px 16px; align-items:center; flex-wrap:wrap; }
-  h1 { margin:0; writing-mode:vertical-rl; font-size:15px; font-weight:400; letter-spacing:.14em; white-space:nowrap; align-self:center; color:var(--fg); padding-right:12px; border-right:2px solid var(--acc); background:none; }
+  h1 { margin:0; writing-mode:vertical-rl; font-size:10px; font-weight:400; letter-spacing:.02em; white-space:nowrap; align-self:center; color:var(--fg); padding-right:12px; border-right:2px solid var(--acc); background:none; }
   h1::first-letter { color:var(--acc); }
-  .row { display:flex; gap:10px 16px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
-  .transport-row { margin-bottom:8px; }
+  .row { display:flex; gap:8px 14px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .transport-row { margin-bottom:5px; gap:6px 12px; }
+  .app-header button, .app-header select { padding:4px 10px; font-size:14px; }
+  .app-header label { font-size:13px; }
+  .app-header .transport-row input[type=range] { width:90px; vertical-align:middle; }
+  .app-header .pan-row input[type=range] { width:72px; vertical-align:middle; }
+  @media (min-width:1101px) { .app-header .pan-row { flex-wrap:nowrap; white-space:nowrap; } }
+  .app-header .grp { gap:6px 12px; flex-wrap:nowrap; }
   .transport-row .grow { flex:1; }
   .utility { padding-block:10px 0; }
   .utility .row { margin-bottom:6px; }
@@ -50,23 +56,34 @@
   .step .n { color:var(--mut); font-size:12px; }
   .tri { width:100%; padding:4px 0; font-size:13px; color:var(--mut); margin:4px 0; }
   .tri.on { background:var(--acc2); color:#1b1713; border-color:var(--acc2); font-weight:600; }
-  .slot { border-top:1px solid #3a3228; padding-top:6px; margin-top:6px; }
+  .slot { border-top:1px solid #3a3228; padding-top:6px; margin-top:6px; display:grid; grid-template-columns:minmax(0,1fr) 38px; gap:4px; }
+  .slot > input { grid-column:1/-1; }
   .slot.hidden { display:none; }
-  .snd { width:100%; margin:2px 0 2px; font-weight:700; font-size:18px; padding:6px 0; }
+  .snd { width:100%; margin:0; font-weight:700; font-size:18px; padding:6px 0; }
   .snd[data-s="-"] { color:var(--mut); }
   .snd[data-s="B"] { color:#e8923a; } .snd[data-s="T"] { color:#5bb7a8; } .snd[data-s="S"] { color:#e8d33a; }
-  .dyn { width:100%; padding:1px 0; margin-bottom:4px; font-size:12px; color:var(--mut); }
+  .dyn { width:100%; padding:0; margin:0; font-size:12px; color:var(--mut); }
   .dyn[data-d="a"] { color:#fff; border-color:#fff; font-weight:700; }
   .dyn[data-d="g"] { color:#6d6253; border-style:dashed; }
   .step input[type=range] { width:100%; margin:0; }
   .a { accent-color:var(--acc); } .b { accent-color:var(--acc2); }
-  .morph { border-radius:10px; padding:8px 14px 10px; background:linear-gradient(90deg,rgba(232,146,58,.22),rgba(42,36,29,.9) 50%,rgba(91,183,168,.22)); border:1px solid #3a3228; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:8px 24px; align-items:center; }
-  .fader { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:2px 12px; align-items:center; }
+  .steps input[type=range] { -webkit-appearance:none; appearance:none; height:18px; background:transparent; border-radius:9px; }
+  .steps input[type=range]::-webkit-slider-runnable-track { height:8px; border-radius:4px; }
+  .steps input[type=range]::-moz-range-track { height:8px; border-radius:4px; }
+  .steps input.a::-webkit-slider-runnable-track { background:rgba(232,146,58,.45); border:1px solid var(--a); }
+  .steps input.b::-webkit-slider-runnable-track { background:rgba(91,183,168,.45); border:1px solid var(--b); }
+  .steps input.a::-moz-range-track { background:rgba(232,146,58,.45); border:1px solid var(--a); }
+  .steps input.b::-moz-range-track { background:rgba(91,183,168,.45); border:1px solid var(--b); }
+  .steps input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; margin-top:-5px; border-radius:50%; border:2px solid #1b1713; }
+  .steps input.a::-webkit-slider-thumb { background:var(--a); } .steps input.b::-webkit-slider-thumb { background:var(--b); }
+  .steps input[type=range]::-moz-range-thumb { width:12px; height:12px; border-radius:50%; border:2px solid #1b1713; }
+  .steps input.a::-moz-range-thumb { background:var(--a); } .steps input.b::-moz-range-thumb { background:var(--b); }
+  .morph { border-radius:10px; padding:4px 12px; background:linear-gradient(90deg,rgba(232,146,58,.22),rgba(42,36,29,.9) 50%,rgba(91,183,168,.22)); border:1px solid #3a3228; display:grid; grid-template-columns:minmax(260px,2fr) auto auto; gap:4px 18px; align-items:center; }
+  .fader { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:0 10px; align-items:center; }
   .fader .ea { color:var(--a); font-weight:600; font-size:14px; } .fader .eb { color:var(--b); font-weight:600; font-size:14px; }
-  .fader .mv { grid-column:1/-1; grid-row:2; text-align:center; font:600 13px ui-monospace,monospace; color:var(--fg); }
+  .fader .mv { min-width:3.2em; text-align:right; font:600 13px ui-monospace,monospace; color:var(--fg); }
   .pan-row { display:flex; gap:8px 14px; align-items:center; flex-wrap:wrap; }
-  .pan-row input { width:100px; }
-  #morph { width:100%; height:28px; margin:0; -webkit-appearance:none; appearance:none; background:transparent; accent-color:#fff; }
+  #morph { width:100%; height:24px; margin:0; -webkit-appearance:none; appearance:none; background:transparent; accent-color:#fff; }
   #morph::-webkit-slider-runnable-track { height:8px; border-radius:4px; background:linear-gradient(90deg,var(--a),var(--b)); }
   #morph::-moz-range-track { height:8px; border-radius:4px; background:linear-gradient(90deg,var(--a),var(--b)); }
   #morph::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; margin-top:-7px; border-radius:50%; background:#fff; border:2px solid #1b1713; box-shadow:0 0 0 1px #fff; }
@@ -78,7 +95,7 @@
   details[open] > summary { color:var(--fg); }
   .tbl { overflow-x:auto; }
   details .hint { margin:8px 0 0; line-height:1.5; max-width:80ch; }
-  @media (max-width:900px) { .morph { grid-template-columns:minmax(0,1fr); } h1 { writing-mode:horizontal-tb; letter-spacing:.1em; border-right:0; padding:0; grid-column:1/-1; } }
+  @media (max-width:1100px) { .morph { grid-template-columns:minmax(0,1fr); } .app-header .grp { flex-wrap:wrap; } h1 { writing-mode:horizontal-tb; letter-spacing:.1em; border-right:0; padding:0; grid-column:1/-1; } }
   @media (max-width:900px), (max-height:620px) { .app-header { position:static; } }
   table { border-collapse:collapse; width:100%; font:13px ui-monospace,monospace; margin-top:8px; }
   th, td { padding:3px 8px; text-align:right; border-bottom:1px solid #3a3228; white-space:nowrap; }
@@ -105,6 +122,12 @@
   <div class="hbody">
     <div class="row transport-row">
       <button class="play" id="play">▶ Start</button>
+      <span class="grp" id="tempoGrp">
+        <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="150"> <span id="bpmAv">150</span></label>
+        <label>Ziel <input type="range" id="bpmB" min="50" max="300" value="250"> <span id="bpmBv">250</span></label>
+        <label title="Pulse pro Minute, Ebene 1">jetzt <b id="bpmNow">200</b></label>
+      </span>
+      <span class="grow"></span>
       <span class="grp" id="presetGrp">
         <select id="presets"><option value="">Preset laden …</option></select>
         <button id="export">Export</button>
@@ -112,15 +135,14 @@
         <button id="reset">Reset</button>
         <input type="file" id="file" accept="application/json,.json" hidden>
       </span>
-      <span class="grow"></span>
       <button id="fsBtn" title="Vollbild" aria-label="Vollbild" hidden>⛶</button>
       <button id="tourBtn">? Tour</button>
     </div>
     <div class="morph">
       <div class="fader">
-        <label class="ea" for="morph">Start (orange)</label>
+        <label class="ea" for="morph">Start</label>
         <input type="range" id="morph" min="0" max="1000" value="0" aria-label="Morph von Start nach Ziel">
-        <span class="eb">Ziel (türkis)</span>
+        <span class="eb">Ziel</span>
         <span class="mv" id="mv">0 %</span>
       </div>
       <div class="pan-row">
@@ -128,25 +150,14 @@
         <label>Dauer <input type="range" id="panSec" min="2" max="30" value="8"> <span id="panSecv">8</span> s</label>
         <label>Bereich <input type="range" id="panLo" min="0" max="95" value="0"> <span id="panLov">0</span>–<input type="range" id="panHi" min="5" max="100" value="100"> <span id="panHiv">100</span> %</label>
       </div>
+      <div class="pan-row" id="soundGrp">
+        <label>Vol <input type="range" id="vol" min="0" max="100" value="80"></label>
+        <span class="seg"><button id="srcSyn">Synth</button><button id="srcRec">Aufnahmen</button></span>
+        <span id="srcMsg" style="font-size:12px;color:var(--mut)"></span>
+      </div>
     </div>
   </div>
 </header>
-
-<div class="utility">
-  <div class="row">
-    <span class="grp" id="tempoGrp">
-      <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="200"> <span id="bpmAv">200</span></label>
-      <label>Tempo Ziel <input type="range" id="bpmB" min="50" max="300" value="110"> <span id="bpmBv">110</span></label>
-      <label>aktuell: <b id="bpmNow">200</b> Pulse/min (Ebene 1)</label>
-    </span>
-    <span class="grow"></span>
-    <span id="srcMsg" style="font-size:13px;color:var(--mut)"></span>
-    <span class="grp" id="soundGrp">
-      <label>Lautstärke <input type="range" id="vol" min="0" max="100" value="80"></label>
-      <span class="seg"><button id="srcSyn">Synthetisch</button><button id="srcRec">Aufnahmen</button></span>
-    </span>
-  </div>
-</div>
 
 <main>
 <canvas id="cv" width="960" height="120"></canvas>
@@ -542,9 +553,10 @@ function renderTimes() {
 // ---------- Visualisierung ----------
 const cv = $('cv'), g2 = cv.getContext('2d');
 const COL = { B:'#e8923a', T:'#5bb7a8', S:'#e8d33a' };
+let CW = 960;                                          // logische Zeichenbreite (CSS-Pixel)
 const BAND = 120;                                      // Höhe einer Ebene im Canvas
 function drawLayer(l, yb, x) {
-  const L = state.layers[l], N = L.n, W = cv.width;
+  const L = state.layers[l], N = L.n, W = CW;
   g2.textAlign = 'center';
   const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : N === 9 ? [0, 3, 6] : N === 12 ? [0, 3, 6, 9] : [0]) : [0];
   for (let i = 0; i <= N; i++) {
@@ -576,9 +588,12 @@ function draw() {
   if (dirty && now - lastSave > 400) save();
   if (now - lastTable > 100) { renderTimes(); lastTable = now; }
 
-  const cw = Math.round(cv.clientWidth); if (cw >= 300 && cv.width !== cw) cv.width = cw;   // Zeichenbreite = Anzeigebreite (keine Skalierung)
-  const two = layerOn(1), H = BAND * (two ? 2 : 1), W = cv.width, pad = 30, x = f => pad + f * (W - 2 * pad);
-  if (cv.height !== H) cv.height = H;
+  const dpr = window.devicePixelRatio || 1, cw = Math.round(cv.clientWidth);
+  if (cw >= 300) CW = cw;
+  const two = layerOn(1), H = BAND * (two ? 2 : 1), W = CW, pad = 30, x = f => pad + f * (W - 2 * pad);
+  if (cv.width !== Math.round(W * dpr)) cv.width = Math.round(W * dpr);
+  if (cv.height !== Math.round(H * dpr)) cv.height = Math.round(H * dpr);
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
   g2.clearRect(0, 0, W, H);
   drawLayer(0, 0, x);
   if (two) drawLayer(1, BAND, x);

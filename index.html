@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patternMorpher</title>
+<style>
+  :root { --bg:#1b1713; --fg:#f0e6d8; --mut:#8c7f6e; --acc:#e8923a; --acc2:#5bb7a8; --card:#2a241d; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:16px system-ui,sans-serif; max-width:960px; margin-inline:auto; }
+  h1 { font-size:20px; margin:0 0 12px; }
+  .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  button, select { background:var(--card); color:var(--fg); border:1px solid #4a4034; border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; }
+  select { padding:6px 8px; font-size:14px; }
+  button.play { background:var(--acc); color:#1b1713; border:none; font-weight:600; min-width:90px; }
+  button.on { background:var(--acc); color:#1b1713; border-color:var(--acc); font-weight:600; }
+  .seg { display:inline-flex; } .seg button { border-radius:0; padding:6px 12px; } .seg button:first-child { border-radius:8px 0 0 8px; } .seg button:last-child { border-radius:0 8px 8px 0; }
+  label { color:var(--mut); font-size:14px; }
+  canvas { width:100%; height:auto; background:var(--card); border-radius:10px; display:block; }
+  .layer { margin:14px 0; padding-left:10px; border-left:3px solid var(--acc2); }
+  .layer.l1 { border-left-color:#c77dd0; }
+  .layer.off .steps { opacity:.35; }
+  .lh { display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:14px; }
+  .lh small { color:var(--mut); }
+  .steps { display:grid; grid-template-columns:repeat(var(--n,6),minmax(0,1fr)); gap:8px; margin:8px 0; align-items:start; }
+  .step { background:var(--card); border-radius:10px; padding:8px; text-align:center; min-width:0; }
+  .step.hidden { display:none; }
+  .step .n { color:var(--mut); font-size:12px; }
+  .tri { width:100%; padding:4px 0; font-size:13px; color:var(--mut); margin:4px 0; }
+  .tri.on { background:var(--acc2); color:#1b1713; border-color:var(--acc2); font-weight:600; }
+  .slot { border-top:1px solid #3a3228; padding-top:6px; margin-top:6px; }
+  .slot.hidden { display:none; }
+  .snd { width:100%; margin:2px 0 2px; font-weight:700; font-size:18px; padding:6px 0; }
+  .snd[data-s="-"] { color:var(--mut); }
+  .snd[data-s="B"] { color:#e8923a; } .snd[data-s="T"] { color:#5bb7a8; } .snd[data-s="S"] { color:#e8d33a; }
+  .dyn { width:100%; padding:1px 0; margin-bottom:4px; font-size:12px; color:var(--mut); }
+  .dyn[data-d="a"] { color:#fff; border-color:#fff; font-weight:700; }
+  .dyn[data-d="g"] { color:#6d6253; border-style:dashed; }
+  .step input[type=range] { width:100%; margin:0; }
+  .a { accent-color:var(--acc); } .b { accent-color:var(--acc2); }
+  .morph { background:var(--card); border-radius:10px; padding:14px; }
+  .morph input { width:100%; accent-color:#fff; }
+  .morph > div { display:flex; justify-content:space-between; color:var(--mut); font-size:13px; }
+  .hint { color:var(--mut); font-size:13px; margin-top:10px; }
+  details { background:var(--card); border-radius:10px; padding:10px 14px; margin-top:14px; }
+  summary { cursor:pointer; color:var(--mut); font-size:14px; }
+  table { border-collapse:collapse; width:100%; font:13px ui-monospace,monospace; margin-top:8px; }
+  th, td { padding:3px 8px; text-align:right; border-bottom:1px solid #3a3228; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; }
+  th.a { color:var(--acc); } th.b { color:var(--acc2); }
+  td small { color:var(--mut); }
+  .snd-B { color:#e8923a; } .snd-T { color:#5bb7a8; } .snd-S { color:#e8d33a; }
+</style>
+</head>
+<body>
+<h1>patternMorpher · Micro-Timing</h1>
+
+<div class="row">
+  <button class="play" id="play">▶ Start</button>
+  <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="200"> <span id="bpmAv">200</span></label>
+  <label>Tempo Ziel <input type="range" id="bpmB" min="50" max="300" value="110"> <span id="bpmBv">110</span></label>
+  <label>aktuell: <b id="bpmNow">200</b> Pulse/min (Ebene 1)</label>
+</div>
+<div class="row">
+  <label>Lautstärke <input type="range" id="vol" min="0" max="100" value="80"></label>
+  <span class="seg"><button id="srcSyn">Synthetisch</button><button id="srcRec">Aufnahmen</button></span>
+  <span id="srcMsg" style="font-size:13px;color:var(--mut)"></span>
+</div>
+<div class="row">
+  <select id="presets"><option value="">Preset laden …</option></select>
+  <button id="export">Export</button>
+  <button id="import">Import</button>
+  <button id="reset">Reset</button>
+  <input type="file" id="file" accept="application/json,.json" hidden>
+</div>
+
+<canvas id="cv" width="960" height="120"></canvas>
+
+<div id="layers"></div>
+
+<div class="morph">
+  <div><span>Start (orange)</span><span id="mv">0 %</span><span>Ziel (türkis)</span></div>
+  <input type="range" id="morph" min="0" max="1000" value="0">
+  <div style="margin-top:10px;justify-content:flex-start;gap:14px;align-items:center;flex-wrap:wrap">
+    <button id="pan">⇄ Auto-Pan</button>
+    <label>Dauer hin &amp; zurück <input type="range" id="panSec" min="2" max="30" value="8" style="width:140px"> <span id="panSecv">8</span> s</label>
+    <label>Bereich <input type="range" id="panLo" min="0" max="95" value="0" style="width:110px"> <span id="panLov">0</span>–<input type="range" id="panHi" min="5" max="100" value="100" style="width:110px"> <span id="panHiv">100</span> %</label>
+  </div>
+</div>
+
+<details open>
+  <summary>Zeiten in ms (Position im Loop, Δ = Abstand zum vorigen Schlag)</summary>
+  <div id="times"></div>
+</details>
+
+<p class="hint">Sound-Button klicken: Pause → Bass → Tone → Slap. Darunter die Dynamik: normal → Akzent (&gt;) → Ghost-Note (( )). „3“ teilt einen Puls in Triolen. Die Regler (orange = Start, türkis = Ziel) verschieben den Schlag um bis zu ± einen Slot. Ebene 2 läuft mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6). Tempo gilt für Ebene 1. Einstellungen werden automatisch im Browser gespeichert; Export/Import/Presets als JSON. Leertaste = Start/Stop.</p>
+
+<script>
+const MAXN = 8, K = 3, M = MAXN * K, NL = 2;     // bis 8 Pulse, je bis zu 3 Triolen-Slots, 2 Ebenen
+const SOUNDS = ['-','B','T','S'];
+const DYNS = ['n','a','g'];                       // normal, Akzent, Ghost
+const DYN_GAIN = { n: 1, a: 1.4, g: .4 }, DYN_LABEL = { n: '•', a: '>', g: '( )' };
+const KEY = 'patternMorpher.v2', OLD_KEY = 'patternMorph.v1';
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const isNum = v => typeof v === 'number' && isFinite(v);
+const $ = id => document.getElementById(id);
+
+function newLayer(n) {
+  return { on: true, n, snd: Array(M).fill('-'), dyn: Array(M).fill('n'), a: Array(M).fill(0), b: Array(M).fill(0), sub: Array(MAXN).fill(false) };
+}
+function defaults() {
+  const L1 = newLayer(6);                         // T(•)T über Triole in Puls 1, T in Puls 2, S in Puls 3
+  L1.sub[0] = true; L1.snd[0] = 'T'; L1.snd[2] = 'T'; L1.snd[3] = 'T'; L1.snd[6] = 'S';
+  L1.a[2] = -44; L1.b[2] = 12; L1.b[3] = 34;
+  const L2 = newLayer(4); L2.on = false;           // Beispiel für Ebene 2: 4 gegen 6
+  L2.snd[0] = 'B'; L2.snd[3] = 'T'; L2.snd[6] = 'B'; L2.snd[9] = 'T'; L2.dyn[3] = 'g'; L2.dyn[9] = 'g';
+  return { name: '', t: 0.67, bpmA: 198, bpmB: 247, vol: .8, panSec: 8, panLo: 0, panHi: 100, src: 'synth', layers: [L1, L2] };
+}
+const state = Object.assign(defaults(), { playing: false, pan: false, panT0: 0, panPhase0: 0 });
+
+// Slot j = Puls i*3 + k. k=0 ist immer aktiv, k=1,2 nur wenn der Puls unterteilt ist.
+const layerOn = l => l === 0 || state.layers[l].on;
+const active  = (L, j) => Math.floor(j / K) < L.n && (j % K === 0 || L.sub[Math.floor(j / K)]);
+const slen    = (L, j) => L.sub[Math.floor(j / K)] ? 1 / K : 1;      // Slot-Länge in Pulsen
+const basePos = j => Math.floor(j / K) + (j % K) / K;
+const bpmAt   = t => (1 - t) * state.bpmA + t * state.bpmB;
+const curBpm  = () => bpmAt(state.t);
+const offAt   = (L, j, t) => ((1 - t) * L.a[j] + t * L.b[j]) / 100 * slen(L, j);   // in Pulsen der Ebene
+const posAt   = (L, j, t) => basePos(j) + offAt(L, j, t);
+const loopMsAt = t => state.layers[0].n * 60000 / bpmAt(t);
+const msAt    = (l, j, t) => posAt(state.layers[l], j, t) / state.layers[l].n * loopMsAt(t);
+
+// ---------- Speichern / Presets ----------
+function getSave() {
+  const { name, t, bpmA, bpmB, vol, panSec, panLo, panHi, src, layers } = state;
+  return { v: 2, name, t, bpmA, bpmB, vol, panSec, panLo, panHi, src, layers };
+}
+function applyLayer(dst, o, l) {
+  if (!o || typeof o !== 'object') return;
+  const arr = (x, len, ok) => Array.isArray(x) && x.length === len && x.every(ok);
+  if (l === 0) { if (o.n === 6 || o.n === 8) dst.n = o.n; }
+  else { if (Number.isInteger(o.n) && o.n >= 2 && o.n <= 8) dst.n = o.n; if (typeof o.on === 'boolean') dst.on = o.on; }
+  if (arr(o.snd, M, s => SOUNDS.includes(s))) dst.snd = o.snd.slice();
+  if (arr(o.dyn, M, s => DYNS.includes(s))) dst.dyn = o.dyn.slice();
+  if (arr(o.a, M, isNum)) dst.a = o.a.map(v => clamp(v, -100, 100));
+  if (arr(o.b, M, isNum)) dst.b = o.b.map(v => clamp(v, -100, 100));
+  if (arr(o.sub, MAXN, v => typeof v === 'boolean')) dst.sub = o.sub.slice();
+}
+function applySave(o) {                          // fehlende Felder -> Standardwerte
+  if (!o || typeof o !== 'object') return;
+  if (!Array.isArray(o.layers)) o = { ...o, layers: [o] };          // altes Einzel-Ebenen-Format
+  Object.assign(state, defaults());
+  if (typeof o.name === 'string') state.name = o.name.slice(0, 80);
+  if (isNum(o.bpmA)) state.bpmA = clamp(o.bpmA, 50, 300);
+  if (isNum(o.bpmB)) state.bpmB = clamp(o.bpmB, 50, 300);
+  if (isNum(o.t)) state.t = clamp(o.t, 0, 1);
+  if (isNum(o.vol)) state.vol = clamp(o.vol, 0, 1);
+  if (isNum(o.panSec)) state.panSec = clamp(o.panSec, 2, 30);
+  if (isNum(o.panLo) && isNum(o.panHi) && o.panHi - o.panLo >= 5) { state.panLo = clamp(o.panLo, 0, 95); state.panHi = clamp(o.panHi, 5, 100); }
+  if (o.src === 'synth' || o.src === 'rec') state.src = o.src;
+  for (let l = 0; l < NL; l++) {
+    if (o.layers[l]) { state.layers[l] = newLayer(l === 0 ? 6 : 4); if (l === 1) state.layers[1].on = false; applyLayer(state.layers[l], o.layers[l], l); }
+    else if (l === 1 && o.layers.length === 1) { /* nur Ebene 1 vorhanden: Beispiel-Ebene 2 aus den Defaults */ }
+  }
+}
+let dirty = false, lastSave = 0;
+function save() { try { localStorage.setItem(KEY, JSON.stringify(getSave())); } catch (e) {} dirty = false; lastSave = performance.now(); }
+try { applySave(JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY))); } catch (e) {}
+['input', 'click', 'change'].forEach(ev => document.addEventListener(ev, () => { dirty = true; }));
+
+// ---------- UI ----------
+const layersEl = $('layers');
+for (let l = 0; l < NL; l++) {
+  const sec = document.createElement('section'); sec.className = 'layer l' + l; sec.dataset.l = l;
+  const head = l === 0
+    ? `<b>Ebene 1</b> <span class="seg"><button class="nbtn" data-l="0" data-n="6">6 Pulse</button><button class="nbtn" data-l="0" data-n="8">8 Pulse</button></span> <small>Grundpuls · bestimmt Tempo und Loop-Länge</small>`
+    : `<label><input type="checkbox" class="onchk" data-l="1"> <b style="color:var(--fg)">Ebene 2</b></label>
+       <label>Pulse im Loop <select class="nsel" data-l="1">${[2,3,4,5,6,7,8].map(n => `<option>${n}</option>`).join('')}</select></label>
+       <small>Gegenrhythmus über dieselbe Loop-Länge (z. B. 4 gegen 6)</small>`;
+  let h = `<div class="lh">${head}</div><div class="steps" data-l="${l}">`;
+  for (let i = 0; i < MAXN; i++) {
+    h += `<div class="step" data-i="${i}"><div class="n">${i+1}</div><button class="tri" data-l="${l}" data-i="${i}">3</button>`;
+    for (let k = 0; k < K; k++) {
+      const j = i*K + k;
+      h += `<div class="slot" data-j="${j}"><button class="snd" data-l="${l}" data-j="${j}"></button>
+        <button class="dyn" data-l="${l}" data-j="${j}" title="Dynamik: normal / Akzent / Ghost"></button>
+        <input class="a" type="range" min="-100" max="100" data-l="${l}" data-k="a" data-j="${j}" title="Start">
+        <input class="b" type="range" min="-100" max="100" data-l="${l}" data-k="b" data-j="${j}" title="Ziel"></div>`;
+    }
+    h += `</div>`;
+  }
+  sec.innerHTML = h + `</div>`; layersEl.appendChild(sec);
+}
+function setT(t) {
+  state.t = t;
+  $('morph').value = Math.round(t * 1000);
+  $('mv').textContent = Math.round(t * 100) + ' %';
+  $('bpmNow').textContent = Math.round(curBpm());
+}
+function syncControls() {
+  for (let l = 0; l < NL; l++) {
+    const L = state.layers[l], sec = layersEl.querySelector(`.layer[data-l="${l}"]`);
+    sec.classList.toggle('off', !layerOn(l));
+    sec.querySelector('.steps').style.setProperty('--n', L.n);
+    sec.querySelectorAll('.step').forEach(s => s.classList.toggle('hidden', +s.dataset.i >= L.n));
+    sec.querySelectorAll('.tri').forEach(b => b.classList.toggle('on', L.sub[+b.dataset.i]));
+    sec.querySelectorAll('.slot').forEach(s => s.classList.toggle('hidden', !active(L, +s.dataset.j)));
+    sec.querySelectorAll('.snd').forEach(b => { const s = L.snd[b.dataset.j]; b.dataset.s = s; b.textContent = s === '-' ? '·' : s; });
+    sec.querySelectorAll('.dyn').forEach(b => { const d = L.dyn[b.dataset.j]; b.dataset.d = d; b.textContent = DYN_LABEL[d]; });
+    sec.querySelectorAll('input[type=range]').forEach(r => r.value = L[r.dataset.k][r.dataset.j]);
+    if (l === 0) sec.querySelectorAll('.nbtn').forEach(b => b.classList.toggle('on', +b.dataset.n === L.n));
+    else { sec.querySelector('.onchk').checked = L.on; sec.querySelector('.nsel').value = L.n; }
+  }
+  $('bpmA').value = state.bpmA; $('bpmAv').textContent = Math.round(state.bpmA);
+  $('bpmB').value = state.bpmB; $('bpmBv').textContent = Math.round(state.bpmB);
+  $('vol').value = Math.round(state.vol * 100); if (master) master.gain.value = state.vol;
+  $('panSec').value = state.panSec; $('panSecv').textContent = state.panSec;
+  $('panLo').value = state.panLo; $('panLov').textContent = state.panLo;
+  $('panHi').value = state.panHi; $('panHiv').textContent = state.panHi;
+  $('srcSyn').classList.toggle('on', state.src === 'synth'); $('srcRec').classList.toggle('on', state.src === 'rec');
+  setT(state.t);
+}
+layersEl.addEventListener('click', e => {
+  const el = e.target.closest('button'); if (!el) return;
+  const l = +el.dataset.l, L = state.layers[l];
+  if (el.classList.contains('tri')) { const i = +el.dataset.i; L.sub[i] = !L.sub[i]; }
+  else if (el.classList.contains('nbtn')) L.n = +el.dataset.n;
+  else if (el.classList.contains('snd')) {
+    const j = +el.dataset.j; L.snd[j] = SOUNDS[(SOUNDS.indexOf(L.snd[j]) + 1) % SOUNDS.length];
+    if (!state.playing) hit(L.snd[j], audio().currentTime, L.dyn[j]);
+  } else if (el.classList.contains('dyn')) {
+    const j = +el.dataset.j; L.dyn[j] = DYNS[(DYNS.indexOf(L.dyn[j]) + 1) % DYNS.length];
+    if (!state.playing) hit(L.snd[j], audio().currentTime, L.dyn[j]);
+  } else return;
+  resync(); syncControls();
+});
+layersEl.addEventListener('input', e => { const r = e.target; if (r.dataset.k) state.layers[+r.dataset.l][r.dataset.k][+r.dataset.j] = +r.value; });
+layersEl.addEventListener('change', e => {
+  const el = e.target, l = +el.dataset.l;
+  if (el.classList.contains('nsel')) state.layers[l].n = +el.value;
+  else if (el.classList.contains('onchk')) state.layers[l].on = el.checked;
+  else return;
+  resync(); syncControls();
+});
+$('morph').oninput = e => { setPan(false); setT(e.target.value / 1000); };
+$('bpmA').oninput = e => { state.bpmA = +e.target.value; $('bpmAv').textContent = state.bpmA; setT(state.t); };
+$('bpmB').oninput = e => { state.bpmB = +e.target.value; $('bpmBv').textContent = state.bpmB; setT(state.t); };
+$('vol').oninput = e => { state.vol = e.target.value / 100; if (master) master.gain.value = state.vol; };
+$('panSec').oninput = e => { state.panSec = +e.target.value; $('panSecv').textContent = state.panSec; if (state.pan) startPan(); };
+$('panLo').oninput = e => { state.panLo = Math.min(+e.target.value, state.panHi - 5); $('panLo').value = state.panLo; $('panLov').textContent = state.panLo; if (state.pan) startPan(); };
+$('panHi').oninput = e => { state.panHi = Math.max(+e.target.value, state.panLo + 5); $('panHi').value = state.panHi; $('panHiv').textContent = state.panHi; if (state.pan) startPan(); };
+
+// Auto-Pan: Kosinus-Bewegung zwischen panLo und panHi (in %), setzt am aktuellen Slider-Stand an
+function startPan() {
+  const lo = state.panLo / 100, hi = state.panHi / 100, u = clamp((state.t - lo) / (hi - lo), 0, 1);
+  state.panT0 = performance.now(); state.panPhase0 = Math.acos(1 - 2 * u) / (2 * Math.PI);
+}
+function setPan(on) {
+  if (on && !state.pan) startPan();
+  state.pan = on; $('pan').classList.toggle('on', on);
+}
+$('pan').onclick = () => setPan(!state.pan);
+function updatePan() {
+  if (!state.pan) return;
+  const ph = state.panPhase0 + (performance.now() - state.panT0) / 1000 / state.panSec;
+  const lo = state.panLo / 100, hi = state.panHi / 100;
+  setT(lo + (hi - lo) * (1 - Math.cos(2 * Math.PI * ph)) / 2);
+}
+
+// Export / Import / Reset / Presets
+function loadObject(o) { applySave(o); resync(); syncControls(); save(); }
+$('export').onclick = () => {
+  const name = prompt('Name für das Preset (optional):', state.name || '');
+  if (name === null) return;
+  state.name = name.trim().slice(0, 80);
+  const slug = (state.name || 'pattern-morph').toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/^-+|-+$/g, '') || 'pattern-morph';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(getSave(), null, 1)], { type: 'application/json' }));
+  a.download = slug + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('import').onclick = () => $('file').click();
+$('file').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(txt => { try { loadObject(JSON.parse(txt)); } catch (err) { alert('Datei konnte nicht gelesen werden.'); } });
+  e.target.value = '';
+};
+$('reset').onclick = () => { if (confirm('Alles auf Standard zurücksetzen?')) loadObject(defaults()); };
+// Presets: presets/index.json = [{file, name}, ...] (wird von tools/gen_presets_index.py erzeugt)
+fetch('presets/index.json').then(r => r.ok ? r.json() : []).then(list => {
+  list.forEach(p => { const o = document.createElement('option'); o.value = p.file; o.textContent = p.name; $('presets').appendChild(o); });
+}).catch(() => {});
+$('presets').onchange = e => {
+  const f = e.target.value; e.target.value = ''; if (!f) return;
+  fetch('presets/' + encodeURIComponent(f)).then(r => r.json()).then(loadObject).catch(() => alert('Preset konnte nicht geladen werden.'));
+};
+
+// ---------- Audio ----------
+let ctx, master, noiseBuf;
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = state.vol;
+    const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+function env(g, t, peak, dec) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+}
+
+// ---- Aufnahmen (WAV-Dateien im Ordner samples/) ----
+const FILES = { B: 'samples/djembe_bass.wav', T: 'samples/djembe_open.wav', S: 'samples/djembe_slap.wav' };
+const samples = {};                    // type -> {buf, onset, gain}
+let samplesState = 'idle';             // idle | loading | ok | error
+function setMsg(s) { $('srcMsg').textContent = s; }
+async function loadSamples() {
+  if (samplesState === 'loading' || samplesState === 'ok') return samplesState === 'ok';
+  samplesState = 'loading'; setMsg('lade …');
+  try {
+    const c = audio();
+    for (const [type, file] of Object.entries(FILES)) {
+      const res = await fetch(file); if (!res.ok) throw new Error(file + ': ' + res.status);
+      const buf = await c.decodeAudioData(await res.arrayBuffer());
+      let peak = 0; const chans = [];
+      for (let ch = 0; ch < buf.numberOfChannels; ch++) { const d = buf.getChannelData(ch); chans.push(d); for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i])); }
+      // Anschlag finden, damit der Schlag-Beginn (nicht die Stille davor) auf dem Zeitpunkt liegt
+      let on = 0; const thr = peak * 0.08;
+      search: for (let i = 0; i < chans[0].length; i++) for (const d of chans) if (Math.abs(d[i]) > thr) { on = i; break search; }
+      samples[type] = { buf, onset: Math.max(0, on / buf.sampleRate - 0.002), gain: peak > 0 ? 0.9 / peak : 1 };
+    }
+    samplesState = 'ok'; setMsg('Aufnahmen geladen'); return true;
+  } catch (err) {
+    samplesState = 'error'; state.src = 'synth'; syncControls();
+    setMsg('Laden fehlgeschlagen – Seite über einen Server öffnen: python3 -m http.server 8000');
+    return false;
+  }
+}
+function sampleHit(type, t, vel) {
+  const s = samples[type], c = audio(), src = c.createBufferSource(), g = c.createGain();
+  const lvl = s.gain * (type === 'B' ? 1 : type === 'T' ? .8 : .7) * vel;
+  src.buffer = s.buf; g.gain.setValueAtTime(lvl, t);
+  const end = Math.min(s.buf.duration - s.onset, 1.6);                 // sehr lange Ausklänge kappen (sanft)
+  g.gain.setValueAtTime(lvl, t + end - 0.15); g.gain.linearRampToValueAtTime(0, t + end);
+  src.connect(g).connect(master); src.start(t, s.onset); src.stop(t + end + .02);
+}
+function setSrc(v) {
+  state.src = v; syncControls();
+  if (v === 'rec') loadSamples().then(ok => { if (ok) syncControls(); });
+  else setMsg('');
+}
+$('srcSyn').onclick = () => setSrc('synth');
+$('srcRec').onclick = () => setSrc('rec');
+
+function hit(type, t, dyn = 'n') {
+  if (type === '-') return;
+  const vel = DYN_GAIN[dyn] ?? 1;
+  if (state.src === 'rec' && samples[type]) return sampleHit(type, t, vel);
+  synthHit(type, t, vel);
+}
+function synthHit(type, t, vel) {
+  const c = audio(), out = c.createGain(); out.gain.value = vel; out.connect(master);
+  if (type === 'B') {                                  // Bass (Dum)
+    const o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(58, t + .25);
+    env(g, t, 1.0, .55); o.connect(g).connect(out); o.start(t); o.stop(t + .6);
+  } else if (type === 'T') {                           // Tone
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(215, t + .2);
+    env(g, t, .7, .32); o.connect(g).connect(out); o.start(t); o.stop(t + .4);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), ng = c.createGain();
+    n.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 1;
+    env(ng, t, .15, .05); n.connect(f).connect(ng).connect(out); n.start(t); n.stop(t + .1);
+  } else {                                             // Slap
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = 3000; f.Q.value = .8;
+    env(g, t, .9, .13); n.connect(f).connect(g).connect(out); n.start(t); n.stop(t + .2);
+    const o = c.createOscillator(), og = c.createGain();
+    o.frequency.value = 420; env(og, t, .4, .1); o.connect(og).connect(out); o.start(t); o.stop(t + .15);
+  }
+}
+
+// ---------- Scheduler ----------
+// Tempo und Pulszahlen werden pro Loop eingefroren (kurz vor Loop-Beginn gelesen).
+// Offsets werden erst beim Einplanen jedes Schlags gelesen -> Regler wirken live.
+// Beide Ebenen teilen sich die Loop-Länge; Ebene 2 hat nur eine andere Pulszahl.
+const loopDurNow = () => state.layers[0].n * 60 / curBpm();
+let loops = [], nextN = [[], []], timer = null;       // loops[n] = {start, dur, np:[n1,n2]}
+const LOOKAHEAD = 0.12, LOOP_AHEAD = 1.0;
+const whenOf = (l, j, n) => loops[n].start + posAt(state.layers[l], j, state.t) * loops[n].dur / loops[n].np[l];
+
+function resync() {                                   // nach Umschalten von Triolen / Pulszahl / Ebene: nichts nachholen
+  if (!state.playing) return;
+  const now = ctx.currentTime;
+  for (let l = 0; l < NL; l++) for (let j = 0; j < M; j++) { let n = 0; while (n < loops.length && whenOf(l, j, n) < now - 0.02) n++; nextN[l][j] = n; }
+}
+function tick() {
+  const now = ctx.currentTime;
+  for (let last = loops[loops.length - 1]; last.start + last.dur < now + LOOP_AHEAD; last = loops[loops.length - 1])
+    loops.push({ start: last.start + last.dur, dur: loopDurNow(), np: state.layers.map(L => L.n) });
+  for (let l = 0; l < NL; l++) {
+    if (!layerOn(l)) continue;
+    const L = state.layers[l];
+    for (let j = 0; j < M; j++) {
+      if (!active(L, j)) continue;
+      while (nextN[l][j] < loops.length) {
+        const n = nextN[l][j];
+        if (basePos(j) >= loops[n].np[l]) { nextN[l][j]++; continue; }
+        const when = whenOf(l, j, n);
+        if (when > now + LOOKAHEAD) break;
+        if (when >= now - 0.02) hit(L.snd[j], Math.max(when, now), L.dyn[j]);
+        nextN[l][j]++;
+      }
+    }
+  }
+}
+function start() {
+  audio(); loops = [{ start: ctx.currentTime + 0.1, dur: loopDurNow(), np: state.layers.map(L => L.n) }];
+  nextN = [Array(M).fill(0), Array(M).fill(0)];
+  timer = setInterval(tick, 25); state.playing = true;
+  $('play').textContent = '■ Stop';
+}
+function stop() {
+  clearInterval(timer); state.playing = false;
+  $('play').textContent = '▶ Start';
+}
+$('play').onclick = () => state.playing ? stop() : start();
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !['BUTTON', 'INPUT', 'SELECT'].includes(e.target.tagName)) { e.preventDefault(); state.playing ? stop() : start(); } });
+
+// ---------- Zeiten-Tabelle ----------
+let lastTable = 0;
+function renderTimes() {
+  const ts = [0, state.t, 1];
+  let h = '';
+  for (let l = 0; l < NL; l++) {
+    if (!layerOn(l)) continue;
+    const L = state.layers[l], notes = [];
+    for (let j = 0; j < M; j++) if (active(L, j) && L.snd[j] !== '-') notes.push(j);
+    const cell = (idx, t) => {
+      const v = msAt(l, notes[idx], t), d = idx ? v - msAt(l, notes[idx-1], t) : null;
+      return `${v.toFixed(0)} <small>${d === null ? '–' : (d >= 0 ? '+' : '') + d.toFixed(0)}</small>`;
+    };
+    h += `<table><tr><th>Ebene ${l+1}</th><th class="a">Start ${Math.round(state.bpmA)} bpm</th><th>Jetzt ${Math.round(curBpm())} bpm</th><th class="b">Ziel ${Math.round(state.bpmB)} bpm</th></tr>`;
+    notes.forEach((j, idx) => {
+      h += `<tr><td class="snd-${L.snd[j]}">${L.snd[j]}${L.dyn[j] === 'a' ? '>' : L.dyn[j] === 'g' ? '(g)' : ''} · Puls ${Math.floor(j/K)+1}${L.sub[Math.floor(j/K)] ? '.' + (j%K+1) : ''}</td>` +
+        ts.map(t => `<td>${cell(idx, t)}</td>`).join('') + '</tr>';
+    });
+    if (l === 0) h += `<tr><td>Loop</td>${ts.map(t => `<td>${loopMsAt(t).toFixed(0)}</td>`).join('')}</tr>`;
+    h += '</table>';
+  }
+  $('times').innerHTML = h;
+}
+
+// ---------- Visualisierung ----------
+const cv = $('cv'), g2 = cv.getContext('2d');
+const COL = { B:'#e8923a', T:'#5bb7a8', S:'#e8d33a' };
+const BAND = 120;                                      // Höhe einer Ebene im Canvas
+function drawLayer(l, yb, x) {
+  const L = state.layers[l], N = L.n, W = cv.width;
+  g2.textAlign = 'center';
+  const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : [0]) : [0];
+  for (let i = 0; i <= N; i++) {
+    const beat = beats.includes(i);
+    g2.strokeStyle = beat ? '#9a8a74' : '#4a4034'; g2.lineWidth = beat ? 2 : 1;
+    g2.beginPath(); g2.moveTo(x(i / N), yb + 14); g2.lineTo(x(i / N), yb + BAND - 4); g2.stroke(); g2.lineWidth = 1;
+    g2.fillStyle = beat ? '#f0e6d8' : '#8c7f6e'; g2.font = '12px sans-serif'; if (i < N) g2.fillText(i + 1, x(i / N), yb + 10);
+    if (i < N && L.sub[i]) {
+      g2.strokeStyle = '#3a3228'; [1/3, 2/3].forEach(f => { g2.beginPath(); g2.moveTo(x((i + f) / N), yb + 24); g2.lineTo(x((i + f) / N), yb + BAND - 14); g2.stroke(); });
+    }
+  }
+  g2.fillStyle = l ? '#c77dd0' : '#8c7f6e'; g2.font = '11px sans-serif'; g2.textAlign = 'left'; g2.fillText('E' + (l + 1), 4, yb + 10); g2.textAlign = 'center';
+  for (let j = 0; j < M; j++) {
+    if (!active(L, j) || L.snd[j] === '-') continue;
+    [[0, 39, '#e8923a'], [1, 83, '#5bb7a8']].forEach(([t, dy, c]) => {
+      g2.globalAlpha = .35; g2.fillStyle = c; g2.beginPath(); g2.arc(x(posAt(L, j, t) / N), yb + dy, 5, 0, 7); g2.fill();
+    });
+    const px = x(posAt(L, j, state.t) / N), py = yb + 61, d = L.dyn[j], r = d === 'a' ? 13 : d === 'g' ? 7 : 10;
+    g2.globalAlpha = d === 'g' ? .6 : 1; g2.fillStyle = COL[L.snd[j]];
+    g2.beginPath(); if (l) g2.rect(px - r, py - r, 2 * r, 2 * r); else g2.arc(px, py, r, 0, 7); g2.fill();
+    if (d === 'a') { g2.strokeStyle = '#fff'; g2.lineWidth = 2; g2.stroke(); g2.lineWidth = 1; }
+    g2.globalAlpha = 1; g2.fillStyle = '#1b1713'; g2.font = 'bold 12px sans-serif'; g2.fillText(L.snd[j], px, py + 4);
+  }
+  g2.globalAlpha = 1;
+}
+function draw() {
+  updatePan();
+  const now = performance.now();
+  if (dirty && now - lastSave > 400) save();
+  if (now - lastTable > 100) { renderTimes(); lastTable = now; }
+
+  const two = layerOn(1), H = BAND * (two ? 2 : 1), W = cv.width, pad = 30, x = f => pad + f * (W - 2 * pad);
+  if (cv.height !== H) cv.height = H;
+  g2.clearRect(0, 0, W, H);
+  drawLayer(0, 0, x);
+  if (two) drawLayer(1, BAND, x);
+  if (state.playing && ctx) {
+    const t = ctx.currentTime; let n = loops.length - 1; while (n > 0 && loops[n].start > t) n--;
+    const p = Math.max(0, (t - loops[n].start) / loops[n].dur);
+    if (p <= 1) { g2.strokeStyle = '#fff'; g2.lineWidth = 2; g2.beginPath(); g2.moveTo(x(p), 4); g2.lineTo(x(p), H - 4); g2.stroke(); g2.lineWidth = 1; }
+  }
+  requestAnimationFrame(draw);
+}
+syncControls();
+// Link-Teilen: index.html?preset=6-gegen-4 lädt presets/6-gegen-4.json
+const qPreset = new URLSearchParams(location.search).get('preset');
+if (qPreset) fetch('presets/' + encodeURIComponent(qPreset.replace(/\.json$/, '')) + '.json').then(r => r.json()).then(loadObject).catch(() => {});
+if (state.src === 'rec') loadSamples();      // gespeicherte Einstellung: Aufnahmen laden (AudioContext startet erst beim ersten Klick)
+draw();
+</script>
+</body>
+</html>

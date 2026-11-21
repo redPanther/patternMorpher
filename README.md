@@ -2,14 +2,14 @@
 
 Werkzeug zum Erkunden von **Micro-Timing** in Djembe-Patterns.
 
-Ein Pattern läuft im Loop (Puls 6 oder 8). Du legst Töne und Pausen darauf und verschiebst die Schläge zeitlich – die Loop-Länge bleibt gleich. Es gibt immer zwei Zustände, **Start** und **Ziel**: gleiche Töne, aber anderes Micro-Timing und anderes Tempo. Ein Slider blendet stufenlos zwischen beiden über. So hört man, wie das Micro-Timing das *Feeling* eines Patterns auch bei unterschiedlichem Tempo zusammenhält.
+Ein Pattern läuft im Loop (Puls 6, 8 oder 12). Du legst Töne und Pausen darauf und verschiebst die Schläge zeitlich – die Loop-Länge bleibt gleich. Es gibt immer zwei Zustände, **Start** und **Ziel**: gleiche Töne, aber anderes Micro-Timing und anderes Tempo. Ein Slider blendet stufenlos zwischen beiden über. So hört man, wie das Micro-Timing das *Feeling* eines Patterns auch bei unterschiedlichem Tempo zusammenhält.
 
 ![Screenshot](docs/screenshot.png)
 
 ## Funktionen
 
 - **Sounds:** Bass, Tone (open) und Slap – synthetisch oder als Aufnahmen (`samples/`)
-- **Puls 6 oder 8**, jeder Puls optional in **Triolen** unterteilbar
+- **Puls 6, 8 oder 12**, jeder Puls optional in **Triolen** unterteilbar
 - **Micro-Timing** pro Schlag: ein Regler für Start (orange), einer für Ziel (türkis)
 - **Tempo Start / Ziel**, der Morph-Slider blendet Timing *und* Tempo über
 - **Auto-Pan:** pendelt automatisch hin und her, mit einstellbarer Dauer und einstellbarem Bereich (z. B. nur 30–80 %, wo es groovt)

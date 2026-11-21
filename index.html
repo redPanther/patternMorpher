@@ -96,7 +96,7 @@
 <p class="hint">Sound-Button klicken: Pause → Bass → Tone → Slap. Darunter die Dynamik: normal → Akzent (&gt;) → Ghost-Note (( )). „3“ teilt einen Puls in Triolen. Die Regler (orange = Start, türkis = Ziel) verschieben den Schlag um bis zu ± einen Slot. Ebene 2 läuft mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6). Tempo gilt für Ebene 1. Einstellungen werden automatisch im Browser gespeichert; Export/Import/Presets als JSON. Leertaste = Start/Stop.</p>
 
 <script>
-const MAXN = 8, K = 3, M = MAXN * K, NL = 2;     // bis 8 Pulse, je bis zu 3 Triolen-Slots, 2 Ebenen
+const MAXN = 12, K = 3, M = MAXN * K, NL = 2;    // bis 12 Pulse, je bis zu 3 Triolen-Slots, 2 Ebenen
 const SOUNDS = ['-','B','T','S'];
 const DYNS = ['n','a','g'];                       // normal, Akzent, Ghost
 const DYN_GAIN = { n: 1, a: 1.4, g: .4 }, DYN_LABEL = { n: '•', a: '>', g: '( )' };
@@ -137,14 +137,15 @@ function getSave() {
 }
 function applyLayer(dst, o, l) {
   if (!o || typeof o !== 'object') return;
-  const arr = (x, len, ok) => Array.isArray(x) && x.length === len && x.every(ok);
-  if (l === 0) { if (o.n === 6 || o.n === 8) dst.n = o.n; }
-  else { if (Number.isInteger(o.n) && o.n >= 2 && o.n <= 8) dst.n = o.n; if (typeof o.on === 'boolean') dst.on = o.on; }
-  if (arr(o.snd, M, s => SOUNDS.includes(s))) dst.snd = o.snd.slice();
-  if (arr(o.dyn, M, s => DYNS.includes(s))) dst.dyn = o.dyn.slice();
-  if (arr(o.a, M, isNum)) dst.a = o.a.map(v => clamp(v, -100, 100));
-  if (arr(o.b, M, isNum)) dst.b = o.b.map(v => clamp(v, -100, 100));
-  if (arr(o.sub, MAXN, v => typeof v === 'boolean')) dst.sub = o.sub.slice();
+  const arr = (x, len, ok) => Array.isArray(x) && x.length <= len && x.length >= 3 && x.every(ok);   // kürzere (ältere) Arrays werden aufgefüllt
+  const fit = (x, fill) => x.concat(Array(fill.length - x.length).fill(fill[0]));
+  if (l === 0) { if (o.n === 6 || o.n === 8 || o.n === 12) dst.n = o.n; }
+  else { if (Number.isInteger(o.n) && o.n >= 2 && o.n <= MAXN) dst.n = o.n; if (typeof o.on === 'boolean') dst.on = o.on; }
+  if (arr(o.snd, M, s => SOUNDS.includes(s))) dst.snd = fit(o.snd, dst.snd);
+  if (arr(o.dyn, M, s => DYNS.includes(s))) dst.dyn = fit(o.dyn, dst.dyn);
+  if (arr(o.a, M, isNum)) dst.a = fit(o.a.map(v => clamp(v, -100, 100)), dst.a);
+  if (arr(o.b, M, isNum)) dst.b = fit(o.b.map(v => clamp(v, -100, 100)), dst.b);
+  if (arr(o.sub, MAXN, v => typeof v === 'boolean')) dst.sub = fit(o.sub, dst.sub);
 }
 function applySave(o) {                          // fehlende Felder -> Standardwerte
   if (!o || typeof o !== 'object') return;
@@ -173,9 +174,9 @@ const layersEl = $('layers');
 for (let l = 0; l < NL; l++) {
   const sec = document.createElement('section'); sec.className = 'layer l' + l; sec.dataset.l = l;
   const head = l === 0
-    ? `<b>Ebene 1</b> <span class="seg"><button class="nbtn" data-l="0" data-n="6">6 Pulse</button><button class="nbtn" data-l="0" data-n="8">8 Pulse</button></span> <small>Grundpuls · bestimmt Tempo und Loop-Länge</small>`
+    ? `<b>Ebene 1</b> <span class="seg"><button class="nbtn" data-l="0" data-n="6">6 Pulse</button><button class="nbtn" data-l="0" data-n="8">8 Pulse</button><button class="nbtn" data-l="0" data-n="12">12 Pulse</button></span> <small>Grundpuls · bestimmt Tempo und Loop-Länge</small>`
     : `<label><input type="checkbox" class="onchk" data-l="1"> <b style="color:var(--fg)">Ebene 2</b></label>
-       <label>Pulse im Loop <select class="nsel" data-l="1">${[2,3,4,5,6,7,8].map(n => `<option>${n}</option>`).join('')}</select></label>
+       <label>Pulse im Loop <select class="nsel" data-l="1">${[2,3,4,5,6,7,8,9,10,11,12].map(n => `<option>${n}</option>`).join('')}</select></label>
        <small>Gegenrhythmus über dieselbe Loop-Länge (z. B. 4 gegen 6)</small>`;
   let h = `<div class="lh">${head}</div><div class="steps" data-l="${l}">`;
   for (let i = 0; i < MAXN; i++) {
@@ -201,7 +202,7 @@ function syncControls() {
   for (let l = 0; l < NL; l++) {
     const L = state.layers[l], sec = layersEl.querySelector(`.layer[data-l="${l}"]`);
     sec.classList.toggle('off', !layerOn(l));
-    sec.querySelector('.steps').style.setProperty('--n', L.n);
+    sec.querySelector('.steps').style.setProperty('--n', L.n > 8 ? Math.ceil(L.n / 2) : L.n);   // 12 Pulse: zwei Zeilen à 6
     sec.querySelectorAll('.step').forEach(s => s.classList.toggle('hidden', +s.dataset.i >= L.n));
     sec.querySelectorAll('.tri').forEach(b => b.classList.toggle('on', L.sub[+b.dataset.i]));
     sec.querySelectorAll('.slot').forEach(s => s.classList.toggle('hidden', !active(L, +s.dataset.j)));
@@ -462,7 +463,7 @@ const BAND = 120;                                      // Höhe einer Ebene im C
 function drawLayer(l, yb, x) {
   const L = state.layers[l], N = L.n, W = cv.width;
   g2.textAlign = 'center';
-  const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : [0]) : [0];
+  const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : N === 12 ? [0, 3, 6, 9] : [0]) : [0];
   for (let i = 0; i <= N; i++) {
     const beat = beats.includes(i);
     g2.strokeStyle = beat ? '#9a8a74' : '#4a4034'; g2.lineWidth = beat ? 2 : 1;

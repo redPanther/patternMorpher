@@ -26,7 +26,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir _site
-          cp -r index.html samples presets docs _site/
+          cp -r index.html manifest.json sw.js icons samples presets docs _site/
           rm -f _site/samples/djembe-mix.wav
 
       - uses: actions/configure-pages@v5

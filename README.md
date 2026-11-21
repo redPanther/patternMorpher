@@ -32,6 +32,8 @@ python3 -m http.server 8000
 
 Leertaste = Start/Stop.
 
+**Tablet / Handy:** Mit „Zum Startbildschirm hinzufügen“ (Safari: Teilen-Menü, Chrome: Menü) startet die App ohne Browserleiste im Vollbild. Nach dem ersten Besuch läuft die App auch **offline** (Service Worker, inkl. Samples und Presets). Im Browser gibt es zusätzlich den Vollbild-Knopf (⛶) oben rechts.
+
 ## Presets
 
 Ein Preset ist eine JSON-Datei im Ordner `presets/`. Am einfachsten erzeugst du sie mit **Export** in der App (dort kannst du einen Namen vergeben) und legst die Datei in `presets/` ab. Der Name aus dem Feld `name` erscheint im Auswahlmenü.

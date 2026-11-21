@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>patternMorpher</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b1713">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="patternMorpher">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <style>
   :root { --bg:#1b1713; --fg:#f0e6d8; --mut:#8c7f6e; --acc:#e8923a; --acc2:#5bb7a8; --card:#2a241d; --a:var(--acc); --b:var(--acc2);
           --app-max:1600px; --slot-min:104px; --slot-max:150px; --header-bg:rgba(27,23,19,.96); }
@@ -104,6 +113,7 @@
         <input type="file" id="file" accept="application/json,.json" hidden>
       </span>
       <span class="grow"></span>
+      <button id="fsBtn" title="Vollbild" aria-label="Vollbild" hidden>⛶</button>
       <button id="tourBtn">? Tour</button>
     </div>
     <div class="morph">
@@ -680,6 +690,21 @@ const qPreset = new URLSearchParams(location.search).get('preset');
 if (qPreset) fetch('presets/' + encodeURIComponent(qPreset.replace(/\.json$/, '')) + '.json').then(r => r.json()).then(loadObject).catch(() => {});
 if (state.src === 'rec') loadSamples();      // gespeicherte Einstellung: Aufnahmen laden (AudioContext startet erst beim ersten Klick)
 draw();
+
+// ---------- Vollbild ----------
+(() => {
+  const de = document.documentElement, btn = $('fsBtn');
+  const req = de.requestFullscreen || de.webkitRequestFullscreen;
+  const cur = () => document.fullscreenElement || document.webkitFullscreenElement;
+  if (!req) return;
+  btn.hidden = false;
+  btn.onclick = () => { try { cur() ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : req.call(de); } catch (e) {} };
+  const upd = () => { btn.textContent = cur() ? '✕' : '⛶'; btn.title = cur() ? 'Vollbild beenden' : 'Vollbild'; };
+  document.addEventListener('fullscreenchange', upd); document.addEventListener('webkitfullscreenchange', upd);
+})();
+
+// Offline-Betrieb (nur über http/https)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

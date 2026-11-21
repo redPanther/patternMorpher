@@ -5,11 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>patternMorpher</title>
 <style>
-  :root { --bg:#1b1713; --fg:#f0e6d8; --mut:#8c7f6e; --acc:#e8923a; --acc2:#5bb7a8; --card:#2a241d; }
+  :root { --bg:#1b1713; --fg:#f0e6d8; --mut:#8c7f6e; --acc:#e8923a; --acc2:#5bb7a8; --card:#2a241d; --a:var(--acc); --b:var(--acc2);
+          --app-max:1600px; --slot-min:104px; --slot-max:150px; --header-bg:rgba(27,23,19,.96); }
   * { box-sizing: border-box; }
-  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:16px system-ui,sans-serif; max-width:960px; margin-inline:auto; }
-  h1 { font-size:20px; margin:0 0 12px; }
-  .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px system-ui,sans-serif; }
+  .app-header, main, .utility { width:100%; max-width:var(--app-max); margin-inline:auto; padding-inline:clamp(10px,2vw,24px); }
+  .app-header { position:sticky; top:0; z-index:20; background:var(--header-bg); padding-block:8px 10px; border-bottom:1px solid #3a3228; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  main { padding-bottom:24px; }
+  .app-header { display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 14px; align-items:stretch; }
+  .hbody { min-width:0; }
+  .grp { display:inline-flex; gap:10px 16px; align-items:center; flex-wrap:wrap; }
+  h1 { margin:0; writing-mode:vertical-rl; font-size:15px; font-weight:400; letter-spacing:.14em; white-space:nowrap; align-self:center; color:var(--fg); padding-right:12px; border-right:2px solid var(--acc); background:none; }
+  h1::first-letter { color:var(--acc); }
+  .row { display:flex; gap:10px 16px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .transport-row { margin-bottom:8px; }
+  .transport-row .grow { flex:1; }
+  .utility { padding-block:10px 0; }
+  .utility .row { margin-bottom:6px; }
+  .utility .grow { flex:1; }
   button, select { background:var(--card); color:var(--fg); border:1px solid #4a4034; border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; }
   select { padding:6px 8px; font-size:14px; }
   button.play { background:var(--acc); color:#1b1713; border:none; font-weight:600; min-width:90px; }
@@ -22,7 +35,7 @@
   .layer.off .steps { opacity:.35; }
   .lh { display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:14px; }
   .lh small { color:var(--mut); }
-  .steps { display:grid; grid-template-columns:repeat(var(--n,6),minmax(0,1fr)); gap:8px; margin:8px 0; align-items:start; }
+  .steps { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(var(--slot-min),var(--slot-max)); gap:8px; margin:8px 0; padding-bottom:8px; align-items:start; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-color:#4a4034 transparent; }
   .step { background:var(--card); border-radius:10px; padding:8px; text-align:center; min-width:0; }
   .step.hidden { display:none; }
   .step .n { color:var(--mut); font-size:12px; }
@@ -38,12 +51,26 @@
   .dyn[data-d="g"] { color:#6d6253; border-style:dashed; }
   .step input[type=range] { width:100%; margin:0; }
   .a { accent-color:var(--acc); } .b { accent-color:var(--acc2); }
-  .morph { background:var(--card); border-radius:10px; padding:14px; }
-  .morph input { width:100%; accent-color:#fff; }
-  .morph > div { display:flex; justify-content:space-between; color:var(--mut); font-size:13px; }
+  .morph { border-radius:10px; padding:8px 14px 10px; background:linear-gradient(90deg,rgba(232,146,58,.22),rgba(42,36,29,.9) 50%,rgba(91,183,168,.22)); border:1px solid #3a3228; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:8px 24px; align-items:center; }
+  .fader { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:2px 12px; align-items:center; }
+  .fader .ea { color:var(--a); font-weight:600; font-size:14px; } .fader .eb { color:var(--b); font-weight:600; font-size:14px; }
+  .fader .mv { grid-column:1/-1; grid-row:2; text-align:center; font:600 13px ui-monospace,monospace; color:var(--fg); }
+  .pan-row { display:flex; gap:8px 14px; align-items:center; flex-wrap:wrap; }
+  .pan-row input { width:100px; }
+  #morph { width:100%; height:28px; margin:0; -webkit-appearance:none; appearance:none; background:transparent; accent-color:#fff; }
+  #morph::-webkit-slider-runnable-track { height:8px; border-radius:4px; background:linear-gradient(90deg,var(--a),var(--b)); }
+  #morph::-moz-range-track { height:8px; border-radius:4px; background:linear-gradient(90deg,var(--a),var(--b)); }
+  #morph::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; margin-top:-7px; border-radius:50%; background:#fff; border:2px solid #1b1713; box-shadow:0 0 0 1px #fff; }
+  #morph::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #1b1713; }
+  #morph:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible, .steps input:focus-visible { outline:2px solid #fff; outline-offset:2px; }
   .hint { color:var(--mut); font-size:13px; margin-top:10px; }
   details { background:var(--card); border-radius:10px; padding:10px 14px; margin-top:14px; }
   summary { cursor:pointer; color:var(--mut); font-size:14px; }
+  details[open] > summary { color:var(--fg); }
+  .tbl { overflow-x:auto; }
+  details .hint { margin:8px 0 0; line-height:1.5; max-width:80ch; }
+  @media (max-width:900px) { .morph { grid-template-columns:minmax(0,1fr); } h1 { writing-mode:horizontal-tb; letter-spacing:.1em; border-right:0; padding:0; grid-column:1/-1; } }
+  @media (max-width:900px), (max-height:620px) { .app-header { position:static; } }
   table { border-collapse:collapse; width:100%; font:13px ui-monospace,monospace; margin-top:8px; }
   th, td { padding:3px 8px; text-align:right; border-bottom:1px solid #3a3228; white-space:nowrap; }
   th:first-child, td:first-child { text-align:left; }
@@ -64,48 +91,68 @@
 </style>
 </head>
 <body>
-<h1>patternMorpher · Micro-Timing</h1>
+<header class="app-header">
+  <h1>patternMorpher</h1>
+  <div class="hbody">
+    <div class="row transport-row">
+      <button class="play" id="play">▶ Start</button>
+      <span class="grp" id="presetGrp">
+        <select id="presets"><option value="">Preset laden …</option></select>
+        <button id="export">Export</button>
+        <button id="import">Import</button>
+        <button id="reset">Reset</button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+      </span>
+      <span class="grow"></span>
+      <button id="tourBtn">? Tour</button>
+    </div>
+    <div class="morph">
+      <div class="fader">
+        <label class="ea" for="morph">Start (orange)</label>
+        <input type="range" id="morph" min="0" max="1000" value="0" aria-label="Morph von Start nach Ziel">
+        <span class="eb">Ziel (türkis)</span>
+        <span class="mv" id="mv">0 %</span>
+      </div>
+      <div class="pan-row">
+        <button id="pan">⇄ Auto-Pan</button>
+        <label>Dauer <input type="range" id="panSec" min="2" max="30" value="8"> <span id="panSecv">8</span> s</label>
+        <label>Bereich <input type="range" id="panLo" min="0" max="95" value="0"> <span id="panLov">0</span>–<input type="range" id="panHi" min="5" max="100" value="100"> <span id="panHiv">100</span> %</label>
+      </div>
+    </div>
+  </div>
+</header>
 
-<div class="row">
-  <button class="play" id="play">▶ Start</button>
-  <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="200"> <span id="bpmAv">200</span></label>
-  <label>Tempo Ziel <input type="range" id="bpmB" min="50" max="300" value="110"> <span id="bpmBv">110</span></label>
-  <label>aktuell: <b id="bpmNow">200</b> Pulse/min (Ebene 1)</label>
-  <button id="tourBtn">? Tour</button>
-</div>
-<div class="row">
-  <label>Lautstärke <input type="range" id="vol" min="0" max="100" value="80"></label>
-  <span class="seg"><button id="srcSyn">Synthetisch</button><button id="srcRec">Aufnahmen</button></span>
-  <span id="srcMsg" style="font-size:13px;color:var(--mut)"></span>
-</div>
-<div class="row">
-  <select id="presets"><option value="">Preset laden …</option></select>
-  <button id="export">Export</button>
-  <button id="import">Import</button>
-  <button id="reset">Reset</button>
-  <input type="file" id="file" accept="application/json,.json" hidden>
+<div class="utility">
+  <div class="row">
+    <span class="grp" id="tempoGrp">
+      <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="200"> <span id="bpmAv">200</span></label>
+      <label>Tempo Ziel <input type="range" id="bpmB" min="50" max="300" value="110"> <span id="bpmBv">110</span></label>
+      <label>aktuell: <b id="bpmNow">200</b> Pulse/min (Ebene 1)</label>
+    </span>
+    <span class="grow"></span>
+    <span id="srcMsg" style="font-size:13px;color:var(--mut)"></span>
+    <span class="grp" id="soundGrp">
+      <label>Lautstärke <input type="range" id="vol" min="0" max="100" value="80"></label>
+      <span class="seg"><button id="srcSyn">Synthetisch</button><button id="srcRec">Aufnahmen</button></span>
+    </span>
+  </div>
 </div>
 
+<main>
 <canvas id="cv" width="960" height="120"></canvas>
 
 <div id="layers"></div>
 
-<div class="morph">
-  <div><span>Start (orange)</span><span id="mv">0 %</span><span>Ziel (türkis)</span></div>
-  <input type="range" id="morph" min="0" max="1000" value="0">
-  <div style="margin-top:10px;justify-content:flex-start;gap:14px;align-items:center;flex-wrap:wrap">
-    <button id="pan">⇄ Auto-Pan</button>
-    <label>Dauer hin &amp; zurück <input type="range" id="panSec" min="2" max="30" value="8" style="width:140px"> <span id="panSecv">8</span> s</label>
-    <label>Bereich <input type="range" id="panLo" min="0" max="95" value="0" style="width:110px"> <span id="panLov">0</span>–<input type="range" id="panHi" min="5" max="100" value="100" style="width:110px"> <span id="panHiv">100</span> %</label>
-  </div>
-</div>
-
-<details open>
+<details>
   <summary>Zeiten in ms (Position im Loop, Δ = Abstand zum vorigen Schlag)</summary>
-  <div id="times"></div>
+  <div class="tbl" id="times"></div>
 </details>
 
-<p class="hint">Sound-Button klicken: Pause → Bass → Tone → Slap. Darunter die Dynamik: normal → Akzent (&gt;) → Ghost-Note (( )). „3“ teilt einen Puls in Triolen. Die Regler (orange = Start, türkis = Ziel) verschieben den Schlag um bis zu ± einen Slot. Ebene 2 läuft mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6). Tempo gilt für Ebene 1. Einstellungen werden automatisch im Browser gespeichert; Export/Import/Presets als JSON. Leertaste = Start/Stop.</p>
+<details>
+  <summary>Bedienung &amp; Hinweise</summary>
+  <p class="hint">Sound-Button klicken: Pause → Bass → Tone → Slap. Darunter die Dynamik: normal → Akzent (&gt;) → Ghost-Note (( )). „3“ teilt einen Puls in Triolen. Die Regler (orange = Start, türkis = Ziel) verschieben den Schlag um bis zu ± einen Slot. Ebene 2 läuft mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6). Tempo gilt für Ebene 1. Einstellungen werden automatisch im Browser gespeichert; Export/Import/Presets als JSON. Leertaste = Start/Stop.</p>
+</details>
+</main>
 
 <div id="tourHole" hidden></div>
 <div id="tourBox" hidden>
@@ -222,7 +269,6 @@ function syncControls() {
   for (let l = 0; l < NL; l++) {
     const L = state.layers[l], sec = layersEl.querySelector(`.layer[data-l="${l}"]`);
     sec.classList.toggle('off', !layerOn(l));
-    sec.querySelector('.steps').style.setProperty('--n', L.n > 8 ? Math.ceil(L.n / 2) : L.n);   // 12 Pulse: zwei Zeilen à 6
     sec.querySelectorAll('.step').forEach(s => s.classList.toggle('hidden', +s.dataset.i >= L.n));
     sec.querySelectorAll('.tri').forEach(b => b.classList.toggle('on', L.sub[+b.dataset.i]));
     sec.querySelectorAll('.slot').forEach(s => s.classList.toggle('hidden', !active(L, +s.dataset.j)));
@@ -520,6 +566,7 @@ function draw() {
   if (dirty && now - lastSave > 400) save();
   if (now - lastTable > 100) { renderTimes(); lastTable = now; }
 
+  const cw = Math.round(cv.clientWidth); if (cw >= 300 && cv.width !== cw) cv.width = cw;   // Zeichenbreite = Anzeigebreite (keine Skalierung)
   const two = layerOn(1), H = BAND * (two ? 2 : 1), W = cv.width, pad = 30, x = f => pad + f * (W - 2 * pad);
   if (cv.height !== H) cv.height = H;
   g2.clearRect(0, 0, W, H);
@@ -560,14 +607,14 @@ const STEPS = [
   { title: 'Töne und Dynamik', el: q('.layer[data-l="0"] .step[data-i="0"] .slot[data-j="0"]'), text: 'Oberer Knopf: Pause → Bass (B) → Tone (T) → Slap (S). Darunter die Dynamik: <b>•</b> normal, <b>&gt;</b> Akzent, <b>( )</b> Ghost-Note. Beim Klicken hörst du den Ton.' },
   { title: 'Triolen', el: q('.layer[data-l="0"] .step[data-i="0"] .tri'), text: 'Mit „3“ teilst du einen Puls in drei Triolen-Slots. Hier ist Puls 1 geteilt. Jeder Slot hat eigenen Ton, eigene Dynamik und eigenes Timing.' },
   { title: 'Micro-Timing', el: q('.layer[data-l="0"] .step[data-i="1"] .slot[data-j="3"]'), demo: demoPlay, text: 'Zwei Regler pro Schlag: <b style="color:var(--acc)">oben orange</b> = Position im Start-Zustand, <b style="color:var(--acc2)">unten türkis</b> = Position im Ziel-Zustand. Mitte = exakt auf dem Raster, links = früher, rechts = später (bis ± 1 Slot).' },
-  { title: 'Tempo Start / Ziel', el: () => $('bpmA').closest('.row'), text: 'Jeder Zustand hat auch sein eigenes Tempo (Pulse pro Minute, gilt für Ebene 1). „aktuell“ zeigt das gerade gespielte Tempo.' },
+  { title: 'Tempo Start / Ziel', el: () => $('tempoGrp'), text: 'Jeder Zustand hat auch sein eigenes Tempo (Pulse pro Minute, gilt für Ebene 1). „aktuell“ zeigt das gerade gespielte Tempo.' },
   { title: 'Morph-Slider', el: q('.morph'), demo: demoSweep, text: 'Blendet stufenlos von Start (links) nach Ziel (rechts) über – Timing und Tempo zugleich. Hier hörst du, wie das Micro-Timing das Feeling bei anderem Tempo zusammenhält.' },
   { title: 'Auto-Pan', el: () => $('pan').parentElement, demo: demoPan, text: 'Bewegt den Morph-Slider automatisch hin und her. Dauer und Bereich stellst du ein (z. B. nur 30–80 %), um den Sweet Spot zu finden, an dem es groovt.' },
   { title: 'Timeline', el: q('#cv'), demo: demoPlay, text: 'Orange/türkise kleine Punkte = Start-/Ziel-Position, große Punkte = aktuell. Dicke Linien = Beats, Ring = Akzent, klein = Ghost. Die weiße Linie ist die Abspielposition.' },
   { title: 'Zeiten in ms', el: q('details'), text: 'Exakte Positionen und Abstände in Millisekunden für Start, jetzt und Ziel – zum Nachrechnen und Vergleichen.' },
   { title: 'Zweite Ebene', el: q('.layer[data-l="1"]'), demo: demoL2, text: 'Ebene 2 hat eine eigene Pulszahl über dieselbe Loop-Länge, z. B. 4 gegen 6. Mit dem Haken schaltest du sie ein.' },
-  { title: 'Klang', el: () => $('srcSyn').closest('.row'), text: '„Aufnahmen“ nutzt echte Djembe-Samples, „Synthetisch“ erzeugt die Töne im Browser.' },
-  { title: 'Presets und Speichern', el: () => $('presets').closest('.row'), text: 'Presets laden, Export/Import als JSON, Reset = leeres Blatt. Alles wird automatisch im Browser gespeichert. Ein Preset lässt sich verlinken: <code>?preset=name</code>.' },
+  { title: 'Klang', el: () => $('soundGrp'), text: '„Aufnahmen“ nutzt echte Djembe-Samples, „Synthetisch“ erzeugt die Töne im Browser.' },
+  { title: 'Presets und Speichern', el: () => $('presetGrp'), text: 'Presets laden, Export/Import als JSON, Reset = leeres Blatt. Alles wird automatisch im Browser gespeichert. Ein Preset lässt sich verlinken: <code>?preset=name</code>.' },
   { title: 'Fertig', text: 'Beim Beenden stelle ich deinen vorherigen Stand wieder her. Die Tour findest du jederzeit unter „? Tour“.' }
 ];
 let tour = null;

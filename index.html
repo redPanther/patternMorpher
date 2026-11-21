@@ -50,6 +50,17 @@
   th.a { color:var(--acc); } th.b { color:var(--acc2); }
   td small { color:var(--mut); }
   .snd-B { color:#e8923a; } .snd-T { color:#5bb7a8; } .snd-S { color:#e8d33a; }
+  [hidden] { display:none !important; }
+  #tourHole { position:fixed; z-index:50; border-radius:10px; box-shadow:0 0 0 9999px rgba(10,8,6,.78); outline:2px solid var(--acc); pointer-events:none; transition:left .25s,top .25s,width .25s,height .25s; }
+  #tourBox { position:fixed; z-index:51; width:min(380px,92vw); background:#2a241d; border:1px solid var(--acc); border-radius:12px; padding:14px 16px; box-shadow:0 8px 30px rgba(0,0,0,.55); }
+  #tourBox h3 { margin:0 0 6px; font-size:16px; color:var(--acc); }
+  #tourBox p { margin:0 0 10px; font-size:14px; line-height:1.45; }
+  #tourBox .tb { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  #tourBox .tb .sp { flex:1; }
+  #tourBox button { padding:6px 12px; font-size:14px; }
+  #tourDemo { background:var(--acc2); color:#1b1713; border:none; font-weight:600; }
+  #tourBtn.hint { animation:tourPulse 1.6s infinite; }
+  @keyframes tourPulse { 0%,100% { box-shadow:0 0 0 0 rgba(232,146,58,.7); } 50% { box-shadow:0 0 0 8px rgba(232,146,58,0); } }
 </style>
 </head>
 <body>
@@ -60,6 +71,7 @@
   <label>Tempo Start <input type="range" id="bpmA" min="50" max="300" value="200"> <span id="bpmAv">200</span></label>
   <label>Tempo Ziel <input type="range" id="bpmB" min="50" max="300" value="110"> <span id="bpmBv">110</span></label>
   <label>aktuell: <b id="bpmNow">200</b> Pulse/min (Ebene 1)</label>
+  <button id="tourBtn">? Tour</button>
 </div>
 <div class="row">
   <label>Lautstärke <input type="range" id="vol" min="0" max="100" value="80"></label>
@@ -95,6 +107,14 @@
 
 <p class="hint">Sound-Button klicken: Pause → Bass → Tone → Slap. Darunter die Dynamik: normal → Akzent (&gt;) → Ghost-Note (( )). „3“ teilt einen Puls in Triolen. Die Regler (orange = Start, türkis = Ziel) verschieben den Schlag um bis zu ± einen Slot. Ebene 2 läuft mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6). Tempo gilt für Ebene 1. Einstellungen werden automatisch im Browser gespeichert; Export/Import/Presets als JSON. Leertaste = Start/Stop.</p>
 
+<div id="tourHole" hidden></div>
+<div id="tourBox" hidden>
+  <h3 id="tourT"></h3><p id="tourP"></p>
+  <div class="tb"><button id="tourDemo"></button></div>
+  <div class="tb"><small id="tourN" style="color:var(--mut)"></small><span class="sp"></span>
+    <button id="tourEnd">Beenden</button><button id="tourPrev">Zurück</button><button class="play" id="tourNext">Weiter</button></div>
+</div>
+
 <script>
 const MAXN = 12, K = 3, M = MAXN * K, NL = 2;    // bis 12 Pulse, je bis zu 3 Triolen-Slots, 2 Ebenen
 const SOUNDS = ['-','B','T','S'];
@@ -114,7 +134,7 @@ function defaults() {
   L1.a[2] = -44; L1.b[2] = 12; L1.b[3] = 34;
   const L2 = newLayer(4); L2.on = false;           // Beispiel für Ebene 2: 4 gegen 6
   L2.snd[0] = 'B'; L2.snd[3] = 'T'; L2.snd[6] = 'B'; L2.snd[9] = 'T'; L2.dyn[3] = 'g'; L2.dyn[9] = 'g';
-  return { name: '', t: 0.67, bpmA: 198, bpmB: 247, vol: .8, panSec: 8, panLo: 0, panHi: 100, src: 'synth', layers: [L1, L2] };
+  return { name: '', t: 0.67, bpmA: 198, bpmB: 247, vol: .8, panSec: 8, panLo: 0, panHi: 100, src: 'rec', layers: [L1, L2] };
 }
 const state = Object.assign(defaults(), { playing: false, pan: false, panT0: 0, panPhase0: 0 });
 
@@ -139,7 +159,7 @@ function applyLayer(dst, o, l) {
   if (!o || typeof o !== 'object') return;
   const arr = (x, len, ok) => Array.isArray(x) && x.length <= len && x.length >= 3 && x.every(ok);   // kürzere (ältere) Arrays werden aufgefüllt
   const fit = (x, fill) => x.concat(Array(fill.length - x.length).fill(fill[0]));
-  if (l === 0) { if (o.n === 6 || o.n === 8 || o.n === 12) dst.n = o.n; }
+  if (l === 0) { if (o.n === 6 || o.n === 8 || o.n === 9 || o.n === 12) dst.n = o.n; }
   else { if (Number.isInteger(o.n) && o.n >= 2 && o.n <= MAXN) dst.n = o.n; if (typeof o.on === 'boolean') dst.on = o.on; }
   if (arr(o.snd, M, s => SOUNDS.includes(s))) dst.snd = fit(o.snd, dst.snd);
   if (arr(o.dyn, M, s => DYNS.includes(s))) dst.dyn = fit(o.dyn, dst.dyn);
@@ -164,8 +184,8 @@ function applySave(o) {                          // fehlende Felder -> Standardw
     else if (l === 1 && o.layers.length === 1) { /* nur Ebene 1 vorhanden: Beispiel-Ebene 2 aus den Defaults */ }
   }
 }
-let dirty = false, lastSave = 0;
-function save() { try { localStorage.setItem(KEY, JSON.stringify(getSave())); } catch (e) {} dirty = false; lastSave = performance.now(); }
+let dirty = false, lastSave = 0, tourActive = false;
+function save() { if (tourActive) return; try { localStorage.setItem(KEY, JSON.stringify(getSave())); } catch (e) {} dirty = false; lastSave = performance.now(); }
 try { applySave(JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY))); } catch (e) {}
 ['input', 'click', 'change'].forEach(ev => document.addEventListener(ev, () => { dirty = true; }));
 
@@ -174,7 +194,7 @@ const layersEl = $('layers');
 for (let l = 0; l < NL; l++) {
   const sec = document.createElement('section'); sec.className = 'layer l' + l; sec.dataset.l = l;
   const head = l === 0
-    ? `<b>Ebene 1</b> <span class="seg"><button class="nbtn" data-l="0" data-n="6">6 Pulse</button><button class="nbtn" data-l="0" data-n="8">8 Pulse</button><button class="nbtn" data-l="0" data-n="12">12 Pulse</button></span> <small>Grundpuls · bestimmt Tempo und Loop-Länge</small>`
+    ? `<b>Ebene 1</b> <span class="seg"><button class="nbtn" data-l="0" data-n="6">6 Pulse</button><button class="nbtn" data-l="0" data-n="8">8 Pulse</button><button class="nbtn" data-l="0" data-n="9">9 Pulse</button><button class="nbtn" data-l="0" data-n="12">12 Pulse</button></span> <small>Grundpuls · bestimmt Tempo und Loop-Länge</small>`
     : `<label><input type="checkbox" class="onchk" data-l="1"> <b style="color:var(--fg)">Ebene 2</b></label>
        <label>Pulse im Loop <select class="nsel" data-l="1">${[2,3,4,5,6,7,8,9,10,11,12].map(n => `<option>${n}</option>`).join('')}</select></label>
        <small>Gegenrhythmus über dieselbe Loop-Länge (z. B. 4 gegen 6)</small>`;
@@ -269,7 +289,14 @@ function updatePan() {
 }
 
 // Export / Import / Reset / Presets
-function loadObject(o) { applySave(o); resync(); syncControls(); save(); }
+function loadObject(o) {                               // Presets/Import ändern die gewählte Klangquelle nicht
+  const src = state.src; applySave(o); state.src = src; resync(); syncControls(); save();
+}
+function blankSheet() {                                // leeres Blatt: keine Töne, alle Regler in der Mitte
+  const o = defaults(); o.name = ''; o.t = 0; o.bpmA = o.bpmB = 150;
+  o.layers = [newLayer(6), Object.assign(newLayer(4), { on: false })];
+  return o;
+}
 $('export').onclick = () => {
   const name = prompt('Name für das Preset (optional):', state.name || '');
   if (name === null) return;
@@ -285,7 +312,7 @@ $('file').onchange = e => {
   f.text().then(txt => { try { loadObject(JSON.parse(txt)); } catch (err) { alert('Datei konnte nicht gelesen werden.'); } });
   e.target.value = '';
 };
-$('reset').onclick = () => { if (confirm('Alles auf Standard zurücksetzen?')) loadObject(defaults()); };
+$('reset').onclick = () => { if (confirm('Leeres Blatt anlegen? Alle Töne und Einstellungen werden gelöscht.')) loadObject(blankSheet()); };
 // Presets: presets/index.json = [{file, name}, ...] (wird von tools/gen_presets_index.py erzeugt)
 fetch('presets/index.json').then(r => r.ok ? r.json() : []).then(list => {
   list.forEach(p => { const o = document.createElement('option'); o.value = p.file; o.textContent = p.name; $('presets').appendChild(o); });
@@ -463,7 +490,7 @@ const BAND = 120;                                      // Höhe einer Ebene im C
 function drawLayer(l, yb, x) {
   const L = state.layers[l], N = L.n, W = cv.width;
   g2.textAlign = 'center';
-  const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : N === 12 ? [0, 3, 6, 9] : [0]) : [0];
+  const beats = l === 0 ? (N === 6 ? [0, 3] : N === 8 ? [0, 4] : N === 9 ? [0, 3, 6] : N === 12 ? [0, 3, 6, 9] : [0]) : [0];
   for (let i = 0; i <= N; i++) {
     const beat = beats.includes(i);
     g2.strokeStyle = beat ? '#9a8a74' : '#4a4034'; g2.lineWidth = beat ? 2 : 1;
@@ -505,6 +532,101 @@ function draw() {
   }
   requestAnimationFrame(draw);
 }
+
+// ---------- Geführte Tour ----------
+const TOUR_KEY = 'patternMorpher.tourSeen';
+const q = sel => () => document.querySelector(sel);
+let sweepRaf = 0;
+function stopAnim() { cancelAnimationFrame(sweepRaf); setPan(false); }
+function ensurePlaying() { if (!state.playing) start(); }
+function sweep(from, to, sec) {
+  stopAnim(); const t0 = performance.now(); setT(from);
+  const f = () => { const u = Math.min(1, (performance.now() - t0) / 1000 / sec); setT(from + (to - from) * u); if (u < 1) sweepRaf = requestAnimationFrame(f); };
+  f();
+}
+function applyKeepSrc(o) { const src = state.src; applySave(o); state.src = src; resync(); syncControls(); }
+const demoPlay  = { label: '▶ Anhören', run: () => { stopAnim(); ensurePlaying(); } };
+const demoSweep = { label: '▶ Morph anhören (0 → 100 %)', run: () => { ensurePlaying(); sweep(0, 1, 10); } };
+const demoPan   = { label: '▶ Auto-Pan anhören', run: () => { ensurePlaying(); stopAnim(); state.panSec = 8; state.panLo = 0; state.panHi = 100; syncControls(); setT(0); setPan(true); } };
+const demoL2    = { label: '▶ Beispiel 6 gegen 4 anhören', run: async () => {
+  stopAnim();
+  try { applyKeepSrc(await (await fetch('presets/6-gegen-4.json')).json()); } catch (e) { state.layers[1].on = true; resync(); syncControls(); }
+  ensurePlaying();
+} };
+const STEPS = [
+  { title: 'Willkommen', text: 'Kurze Tour durch die Bedienung, mit Hörbeispielen. Ich lade dafür ein Beispiel-Pattern (Triole T-T-T-S). Du kannst jederzeit selbst mitklicken. Am Ende wird dein eigener Stand wiederhergestellt. Weiter mit den Pfeiltasten, Esc beendet.' },
+  { title: 'Abspielen', el: q('#play'), demo: demoPlay, text: 'Start/Stop (oder Leertaste). Das Pattern läuft als Loop. Der Browser spielt Ton erst nach dem ersten Klick.' },
+  { title: 'Pulszahl', el: q('.layer[data-l="0"] .lh'), text: 'Ebene 1 ist der Grundpuls: 6, 8, 9 oder 12 Pulse pro Loop. Bei 6 liegen die Beats auf 1 und 4 (dicke Linien in der Timeline).' },
+  { title: 'Töne und Dynamik', el: q('.layer[data-l="0"] .step[data-i="0"] .slot[data-j="0"]'), text: 'Oberer Knopf: Pause → Bass (B) → Tone (T) → Slap (S). Darunter die Dynamik: <b>•</b> normal, <b>&gt;</b> Akzent, <b>( )</b> Ghost-Note. Beim Klicken hörst du den Ton.' },
+  { title: 'Triolen', el: q('.layer[data-l="0"] .step[data-i="0"] .tri'), text: 'Mit „3“ teilst du einen Puls in drei Triolen-Slots. Hier ist Puls 1 geteilt. Jeder Slot hat eigenen Ton, eigene Dynamik und eigenes Timing.' },
+  { title: 'Micro-Timing', el: q('.layer[data-l="0"] .step[data-i="1"] .slot[data-j="3"]'), demo: demoPlay, text: 'Zwei Regler pro Schlag: <b style="color:var(--acc)">oben orange</b> = Position im Start-Zustand, <b style="color:var(--acc2)">unten türkis</b> = Position im Ziel-Zustand. Mitte = exakt auf dem Raster, links = früher, rechts = später (bis ± 1 Slot).' },
+  { title: 'Tempo Start / Ziel', el: () => $('bpmA').closest('.row'), text: 'Jeder Zustand hat auch sein eigenes Tempo (Pulse pro Minute, gilt für Ebene 1). „aktuell“ zeigt das gerade gespielte Tempo.' },
+  { title: 'Morph-Slider', el: q('.morph'), demo: demoSweep, text: 'Blendet stufenlos von Start (links) nach Ziel (rechts) über – Timing und Tempo zugleich. Hier hörst du, wie das Micro-Timing das Feeling bei anderem Tempo zusammenhält.' },
+  { title: 'Auto-Pan', el: () => $('pan').parentElement, demo: demoPan, text: 'Bewegt den Morph-Slider automatisch hin und her. Dauer und Bereich stellst du ein (z. B. nur 30–80 %), um den Sweet Spot zu finden, an dem es groovt.' },
+  { title: 'Timeline', el: q('#cv'), demo: demoPlay, text: 'Orange/türkise kleine Punkte = Start-/Ziel-Position, große Punkte = aktuell. Dicke Linien = Beats, Ring = Akzent, klein = Ghost. Die weiße Linie ist die Abspielposition.' },
+  { title: 'Zeiten in ms', el: q('details'), text: 'Exakte Positionen und Abstände in Millisekunden für Start, jetzt und Ziel – zum Nachrechnen und Vergleichen.' },
+  { title: 'Zweite Ebene', el: q('.layer[data-l="1"]'), demo: demoL2, text: 'Ebene 2 hat eine eigene Pulszahl über dieselbe Loop-Länge, z. B. 4 gegen 6. Mit dem Haken schaltest du sie ein.' },
+  { title: 'Klang', el: () => $('srcSyn').closest('.row'), text: '„Aufnahmen“ nutzt echte Djembe-Samples, „Synthetisch“ erzeugt die Töne im Browser.' },
+  { title: 'Presets und Speichern', el: () => $('presets').closest('.row'), text: 'Presets laden, Export/Import als JSON, Reset = leeres Blatt. Alles wird automatisch im Browser gespeichert. Ein Preset lässt sich verlinken: <code>?preset=name</code>.' },
+  { title: 'Fertig', text: 'Beim Beenden stelle ich deinen vorherigen Stand wieder her. Die Tour findest du jederzeit unter „? Tour“.' }
+];
+let tour = null;
+function tourShow(i) {
+  tour.i = i; stopAnim(); const s = STEPS[i];
+  $('tourT').textContent = s.title; $('tourP').innerHTML = s.text;
+  $('tourN').textContent = `${i + 1} / ${STEPS.length}`;
+  $('tourPrev').disabled = i === 0; $('tourNext').textContent = i === STEPS.length - 1 ? 'Fertig' : 'Weiter';
+  $('tourDemo').hidden = !s.demo; if (s.demo) $('tourDemo').textContent = s.demo.label;
+  tour.el = s.el ? s.el() : null;
+  if (tour.el) tour.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function tourLayout() {
+  if (!tour) return;
+  const hole = $('tourHole'), box = $('tourBox'), W = innerWidth, H = innerHeight, bw = box.offsetWidth, bh = box.offsetHeight;
+  let r = null;
+  if (tour.el) { const b = tour.el.getBoundingClientRect(); if (b.width) r = { x: b.left - 6, y: b.top - 6, w: b.width + 12, h: b.height + 12 }; }
+  if (r) {
+    Object.assign(hole.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' });
+    let top = r.y + r.h + 12;
+    if (top + bh > H - 8) top = r.y - bh - 12;                       // oben statt unten
+    if (top < 8) top = H - bh - 8;                                   // sonst fest am unteren Rand
+    box.style.top = top + 'px'; box.style.left = clamp(r.x, 8, Math.max(8, W - bw - 8)) + 'px';
+  } else {
+    Object.assign(hole.style, { left: W / 2 + 'px', top: H / 2 + 'px', width: '0px', height: '0px' });
+    box.style.top = Math.max(8, (H - bh) / 2) + 'px'; box.style.left = Math.max(8, (W - bw) / 2) + 'px';
+  }
+  requestAnimationFrame(tourLayout);
+}
+async function tourStart() {
+  if (tour) return;
+  try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) {}
+  $('tourBtn').classList.remove('hint');
+  tour = { i: 0, el: null, backup: JSON.parse(JSON.stringify(getSave())) }; tourActive = true;
+  try { const r = await fetch('presets/triole-ttts.json'); if (r.ok) applyKeepSrc(await r.json()); } catch (e) {}
+  $('tourHole').hidden = false; $('tourBox').hidden = false;
+  $('tourHole').style.transition = 'none';                 // erstes Einblenden ohne Gleiten
+  tourShow(0); tourLayout();
+  setTimeout(() => { $('tourHole').style.transition = ''; }, 100);
+}
+function tourEnd() {
+  if (!tour) return;
+  stopAnim(); if (state.playing) stop();
+  const backup = tour.backup; tour = null; tourActive = false;
+  $('tourHole').hidden = true; $('tourBox').hidden = true;
+  applyKeepSrc(backup); save();
+}
+const tourGo = d => { const i = tour.i + d; if (i >= STEPS.length) tourEnd(); else if (i >= 0) tourShow(i); };
+$('tourBtn').onclick = () => tour ? tourEnd() : tourStart();
+$('tourNext').onclick = () => tourGo(1);
+$('tourPrev').onclick = () => tourGo(-1);
+$('tourEnd').onclick = tourEnd;
+$('tourDemo').onclick = () => STEPS[tour.i].demo.run();
+document.addEventListener('keydown', e => {
+  if (!tour || ['INPUT', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.key === 'ArrowRight') tourGo(1); else if (e.key === 'ArrowLeft') tourGo(-1); else if (e.key === 'Escape') tourEnd();
+});
+try { if (!localStorage.getItem(TOUR_KEY)) $('tourBtn').classList.add('hint'); } catch (e) {}
+
 syncControls();
 // Link-Teilen: index.html?preset=6-gegen-4 lädt presets/6-gegen-4.json
 const qPreset = new URLSearchParams(location.search).get('preset');

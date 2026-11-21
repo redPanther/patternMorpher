@@ -2,21 +2,22 @@
 
 Werkzeug zum Erkunden von **Micro-Timing** in Djembe-Patterns.
 
-Ein Pattern läuft im Loop (Puls 6, 8 oder 12). Du legst Töne und Pausen darauf und verschiebst die Schläge zeitlich – die Loop-Länge bleibt gleich. Es gibt immer zwei Zustände, **Start** und **Ziel**: gleiche Töne, aber anderes Micro-Timing und anderes Tempo. Ein Slider blendet stufenlos zwischen beiden über. So hört man, wie das Micro-Timing das *Feeling* eines Patterns auch bei unterschiedlichem Tempo zusammenhält.
+Ein Pattern läuft im Loop (Puls 6, 8, 9 oder 12). Du legst Töne und Pausen darauf und verschiebst die Schläge zeitlich – die Loop-Länge bleibt gleich. Es gibt immer zwei Zustände, **Start** und **Ziel**: gleiche Töne, aber anderes Micro-Timing und anderes Tempo. Ein Slider blendet stufenlos zwischen beiden über. So hört man, wie das Micro-Timing das *Feeling* eines Patterns auch bei unterschiedlichem Tempo zusammenhält.
 
 ![Screenshot](docs/screenshot.png)
 
 ## Funktionen
 
-- **Sounds:** Bass, Tone (open) und Slap – synthetisch oder als Aufnahmen (`samples/`)
-- **Puls 6, 8 oder 12**, jeder Puls optional in **Triolen** unterteilbar
+- **Sounds:** Bass, Tone (open) und Slap – als Aufnahmen (`samples/`, Standard) oder synthetisch
+- **Puls 6, 8, 9 oder 12**, jeder Puls optional in **Triolen** unterteilbar
 - **Micro-Timing** pro Schlag: ein Regler für Start (orange), einer für Ziel (türkis)
 - **Tempo Start / Ziel**, der Morph-Slider blendet Timing *und* Tempo über
 - **Auto-Pan:** pendelt automatisch hin und her, mit einstellbarer Dauer und einstellbarem Bereich (z. B. nur 30–80 %, wo es groovt)
 - **Akzent und Ghost-Note** pro Schlag
 - **Zweite Ebene** mit eigener Pulszahl über dieselbe Loop-Länge (z. B. 4 gegen 6)
 - **Zeiten-Tabelle** in ms (Position und Abstand zum vorigen Schlag) für Start, Ziel und aktuellen Stand
-- Automatisches Speichern im Browser, **Export / Import / Presets** als JSON
+- **Geführte Tour** („? Tour“) mit Hörbeispielen; danach wird dein Stand wiederhergestellt
+- Automatisches Speichern im Browser, **Export / Import / Presets** als JSON, **Reset** = leeres Blatt
 
 ## Benutzen
 
